@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CardEdge
+
+A poker and blackjack probability/helper dashboard built with Next.js. CardEdge helps you practice table decisions with estimated equity, pot odds, and basic strategy recommendations in a polished, casino-inspired interface.
+
+> **Disclaimer:** CardEdge is a training and probability tool only. It is not financial advice, not a guaranteed winning system, and not intended for cheating in real-money games. All poker and blackjack recommendations are estimates based on visible cards, simulations, and common strategy rules.
+
+## Features
+
+- **Poker table interface** — Visual Texas Hold'em layout with community cards, pot display, and player seats
+- **Player management** — Add/remove players, set stacks, blinds, hero/dealer positions, and opponent styles
+- **Pot odds tracking** — Live pot odds calculations with clear formulas and call thresholds
+- **Monte Carlo poker equity estimates** — Win/tie/lose probabilities from randomized simulations
+- **Blackjack basic strategy helper** — Rule-aware hit/stand/double/split/surrender recommendations
+- **Rule settings for blackjack** — Deck count, H17, double after split, surrender, and payout options
+- **Animated casino-style UI** — Dark felt gradients, glassmorphism, and smooth motion throughout
+
+## Tech Stack
+
+- [Next.js](https://nextjs.org/) (App Router)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Framer Motion](https://www.framer.com/motion/)
+- [Zustand](https://zustand.docs.pmnd.rs/)
+- [lucide-react](https://lucide.dev/)
+- [pokersolver](https://www.npmjs.com/package/pokersolver)
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Build for production:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+## Current Status
 
-To learn more about Next.js, take a look at the following resources:
+**Work in progress.** The core MVP is being built and is functional for local training use. Some calculations, UI flows, and edge cases may still need refinement as the project evolves.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Future Improvements
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Better opponent range modeling for poker
+- More precise poker simulations and performance tuning
+- More blackjack rule variations (European no-hole-card, peek rules, etc.)
+- Saved sessions and hand history
+- Mobile polish and touch-friendly controls
+- Deployment to a production host
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private portfolio project. All rights reserved unless otherwise specified.

@@ -85,3 +85,94 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   opacity: 0.5;
 }
+
+@keyframes wip-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes wip-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.wip-banner {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 185, 129, 0.08) 0%,
+    rgba(5, 8, 7, 0.92) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.wip-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.2),
+    rgba(201, 168, 76, 0.65),
+    rgba(220, 38, 38, 0.5),
+    rgba(16, 185, 129, 0.65),
+    rgba(201, 168, 76, 0.2)
+  );
+  background-size: 300% 100%;
+  animation: wip-shimmer 5s ease-in-out infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wip-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 120% at 50% 0%,
+    rgba(16, 185, 129, 0.12) 0%,
+    transparent 70%
+  );
+  animation: wip-glow-pulse 3.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wip-banner-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .wip-banner-inner {
+    align-items: center;
+    padding: 0.5rem 1.5rem;
+  }
+}
