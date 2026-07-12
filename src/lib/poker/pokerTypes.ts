@@ -42,9 +42,9 @@ export interface Player {
   style: OpponentStyle;
   /** Optional user-defined starting-hand range percentage. */
   rangeOverride?: number;
-  /** Chips committed during the current betting street. */
+  /** Dollars committed during the current betting street. */
   streetCommitment: number;
-  /** Chips committed during the complete hand. */
+  /** Dollars committed during the complete hand. */
   totalCommitted: number;
   holeCards?: [Card, Card];
 }

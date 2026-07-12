@@ -5,6 +5,7 @@ import { usePokerStore } from "@/store/pokerStore";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
+import { formatCurrency } from "@/lib/money";
 
 export function PokerHistoryPanel() {
   const savedHands = usePokerStore((state) => state.savedHands);
@@ -25,7 +26,7 @@ export function PokerHistoryPanel() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <SectionHeader
           title="Hand History"
-          subtitle="Stored privately in this browser for replay and review"
+          subtitle="Saved locally and synced when you sign in"
         />
         <div className="flex gap-2 text-xs">
           <span className="rounded-lg bg-white/5 px-3 py-1.5 text-zinc-400">{savedHands.length} saved</span>
@@ -64,7 +65,7 @@ export function PokerHistoryPanel() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium capitalize text-zinc-200">
-                    {hand.street} · ${hand.pot} pot
+                    {hand.street} · {formatCurrency(hand.pot)} pot
                   </p>
                   <p className="text-[11px] text-zinc-500">
                     {new Date(hand.savedAt).toLocaleString()} · {hand.actions.length} actions
@@ -75,7 +76,7 @@ export function PokerHistoryPanel() {
                     type="button"
                     onClick={() => loadSavedHand(hand.id)}
                     aria-label={`Replay saved hand from ${new Date(hand.savedAt).toLocaleString()}`}
-                    className="rounded-lg p-1.5 text-zinc-600 hover:bg-emerald-500/10 hover:text-emerald-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-600 hover:bg-emerald-500/10 hover:text-emerald-400"
                   >
                     <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -83,7 +84,7 @@ export function PokerHistoryPanel() {
                     type="button"
                     onClick={() => deleteSavedHand(hand.id)}
                     aria-label={`Delete saved hand from ${new Date(hand.savedAt).toLocaleString()}`}
-                    className="rounded-lg p-1.5 text-zinc-600 hover:bg-red-500/10 hover:text-red-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-600 hover:bg-red-500/10 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>

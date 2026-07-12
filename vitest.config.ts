@@ -14,6 +14,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
       include: [
+        "src/lib/{bankroll,money}.ts",
         "src/lib/blackjack/{basicStrategy,handValue,recommendations,shoe}.ts",
         "src/lib/poker/{deck,handState,monteCarlo,random,ranges,recommendations,validation}.ts",
       ],

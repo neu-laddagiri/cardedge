@@ -77,7 +77,7 @@ export function PokerOddsPanel() {
               onClick={() => setPrecision(option)}
               aria-pressed={precision === option}
               className={cn(
-                "flex-1 rounded-lg px-2 py-1 text-[10px] font-medium capitalize transition-colors",
+                "min-h-11 flex-1 rounded-xl px-2 text-[10px] font-medium capitalize transition-colors",
                 precision === option
                   ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-300"
                   : "bg-white/5 text-zinc-500 hover:text-zinc-300"

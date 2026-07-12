@@ -18,12 +18,12 @@ import { validateShoe } from "@/lib/blackjack/shoe";
 let playerIdCounter = 1;
 let handIdCounter = 1;
 
-function createHand(): BlackjackHand {
-  return { id: `h${handIdCounter++}`, cards: [], status: "active", isSplit: false, bet: 25 };
+function createHand(bet = 25): BlackjackHand {
+  return { id: `h${handIdCounter++}`, cards: [], status: "active", isSplit: false, bet };
 }
 
-function createDefaultPlayers(): BlackjackPlayer[] {
-  return [{ id: `bj${playerIdCounter++}`, name: "Player 1", hands: [createHand()] }];
+function createDefaultPlayers(defaultBet = 25): BlackjackPlayer[] {
+  return [{ id: `bj${playerIdCounter++}`, name: "Player 1", hands: [createHand(defaultBet)] }];
 }
 
 function updateHandStatus(hand: BlackjackHand): BlackjackHand {
@@ -35,6 +35,7 @@ function updateHandStatus(hand: BlackjackHand): BlackjackHand {
 
 interface BlackjackStore {
   rules: BlackjackRules;
+  defaultBet: number;
   players: BlackjackPlayer[];
   dealerCards: BJCard[];
   activePlayerId: string | null;
@@ -49,6 +50,8 @@ interface BlackjackStore {
   addPlayer: () => void;
   removePlayer: (id: string) => void;
   renamePlayer: (id: string, name: string) => void;
+  setDefaultBet: (amount: number) => void;
+  setHandBet: (playerId: string, handId: string, amount: number) => void;
   addHand: (playerId: string) => void;
   splitHand: (playerId: string, handId: string) => void;
   addCardToHand: (playerId: string, handId: string, card: BJCard) => void;
@@ -67,6 +70,7 @@ interface BlackjackStore {
   saveCurrentSession: () => void;
   deleteSavedSession: (id: string) => void;
   loadSavedSession: (id: string) => void;
+  replaceSavedSessions: (sessions: BlackjackSessionRecord[]) => void;
   clearDecisionHistory: () => void;
   resetTable: () => void;
 }
@@ -140,6 +144,7 @@ export const useBlackjackStore = create<BlackjackStore>()(
         surrenderAllowed: true,
         blackjackPayout: "3:2",
       },
+      defaultBet: 25,
       players: defaultPlayers,
       dealerCards: [],
       activePlayerId: defaultPlayers[0]?.id ?? null,
@@ -158,7 +163,7 @@ export const useBlackjackStore = create<BlackjackStore>()(
       }),
       addPlayer: () => set((state) => {
         if (state.players.length >= 7) return { lastError: "The training table supports up to seven players." };
-        const hand = createHand();
+        const hand = createHand(state.defaultBet);
         const player: BlackjackPlayer = { id: `bj${playerIdCounter++}`, name: `Player ${state.players.length + 1}`, hands: [hand] };
         return { players: [...state.players, player], lastError: null };
       }),
@@ -176,10 +181,27 @@ export const useBlackjackStore = create<BlackjackStore>()(
       renamePlayer: (id, name) => set((state) => ({
         players: state.players.map((player) => player.id === id ? { ...player, name: name.slice(0, 32) } : player),
       })),
+      setDefaultBet: (defaultBet) => set({
+        defaultBet: Math.max(0, Math.round(defaultBet * 100) / 100),
+      }),
+      setHandBet: (playerId, handId, amount) => set((state) => ({
+        players: state.players.map((player) =>
+          player.id === playerId
+            ? {
+                ...player,
+                hands: player.hands.map((hand) =>
+                  hand.id === handId && hand.cards.length === 0
+                    ? { ...hand, bet: Math.max(0, Math.round(amount * 100) / 100) }
+                    : hand
+                ),
+              }
+            : player
+        ),
+      })),
       addHand: (playerId) => set((state) => {
         const player = state.players.find((candidate) => candidate.id === playerId);
         if (!player || player.hands.length >= 4) return { lastError: "A player can have at most four split hands." };
-        const hand = createHand();
+        const hand = createHand(state.defaultBet);
         return withRecommendation(state, {
           players: state.players.map((candidate) => candidate.id === playerId ? { ...candidate, hands: [...candidate.hands, hand] } : candidate),
           activePlayerId: playerId,
@@ -343,12 +365,17 @@ export const useBlackjackStore = create<BlackjackStore>()(
           lastError: null,
         });
       }),
+      replaceSavedSessions: (savedSessions) => set({
+        savedSessions: [...savedSessions]
+          .sort((a, b) => b.savedAt - a.savedAt)
+          .slice(0, 100),
+      }),
       clearDecisionHistory: () => set({ decisions: [] }),
       resetTable: () => {
         const state = get();
         const players = state.players.map((player) => ({
           ...player,
-          hands: [createHand()],
+          hands: [createHand(state.defaultBet)],
         }));
         set({
           players,
@@ -363,13 +390,18 @@ export const useBlackjackStore = create<BlackjackStore>()(
     }),
     {
       name: "cardedge-blackjack-v2",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         rules: state.rules,
+        defaultBet: state.defaultBet,
         decisions: state.decisions,
         savedSessions: state.savedSessions,
       }),
+      migrate: (persisted) => ({
+        defaultBet: 25,
+        ...(persisted as Partial<BlackjackStore>),
+      }) as BlackjackStore,
     }
   )
 );

@@ -34,7 +34,7 @@ export function StreetControls() {
 
   return (
     <GlassCard padding="sm">
-      <SectionHeader title="Game State" subtitle="Cards, street & blinds" />
+      <SectionHeader title="Hand Setup" subtitle="Cards, street, and dollar stakes" />
 
       <div className="flex gap-1 mb-4">
         {STREETS.map((s) => (
@@ -43,7 +43,7 @@ export function StreetControls() {
             onClick={() => setStreet(s)}
             aria-pressed={street === s}
             className={cn(
-              "flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
+              "min-h-11 flex-1 rounded-xl text-xs font-medium capitalize transition-colors",
               street === s
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : "bg-white/5 text-zinc-500 hover:text-zinc-300"
@@ -56,33 +56,39 @@ export function StreetControls() {
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Next hand buy-in</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Buy-in ($)</label>
           <input
             aria-label="Next hand buy-in"
             type="number"
             min="0"
+            step="0.01"
+            inputMode="decimal"
             value={startingBuyIn}
             onChange={(e) => setStartingBuyIn(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Next SB</label>
+          <label className="text-[10px] text-zinc-500 uppercase">SB ($)</label>
           <input
             aria-label="Next hand small blind"
             type="number"
             min="0"
+            step="0.01"
+            inputMode="decimal"
             value={smallBlind}
             onChange={(e) => setSmallBlindAmount(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Next BB</label>
+          <label className="text-[10px] text-zinc-500 uppercase">BB ($)</label>
           <input
             aria-label="Next hand big blind"
             type="number"
             min="0"
+            step="0.01"
+            inputMode="decimal"
             value={bigBlind}
             onChange={(e) => setBigBlindAmount(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"

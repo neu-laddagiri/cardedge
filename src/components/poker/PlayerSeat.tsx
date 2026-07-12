@@ -3,6 +3,7 @@
 import type { Player } from "@/lib/poker/pokerTypes";
 import { cn } from "@/lib/utils";
 import { Crown, Circle } from "lucide-react";
+import { formatCurrency } from "@/lib/money";
 
 interface PlayerSeatProps {
   player: Player;
@@ -19,7 +20,7 @@ export function PlayerSeat({ player, isActing = false }: PlayerSeatProps) {
   return (
     <div
       className={cn(
-        "min-w-[66px] rounded-xl border px-1.5 py-1 text-center transition-all sm:min-w-[80px] sm:px-2 sm:py-1.5",
+        "min-w-[58px] rounded-xl border px-1 py-1 text-center transition-all sm:min-w-[80px] sm:px-2 sm:py-1.5",
         statusColors[player.status],
         player.isHero && "ring-1 ring-emerald-400/50",
         isActing && "ring-2 ring-[#c9a84c] shadow-[0_0_18px_rgba(201,168,76,0.28)]"
@@ -31,7 +32,7 @@ export function PlayerSeat({ player, isActing = false }: PlayerSeatProps) {
           {player.name}
         </span>
       </div>
-      <div className="text-[9px] text-zinc-500 tabular-nums">${player.stack}</div>
+      <div className="text-[9px] text-zinc-500 tabular-nums">{formatCurrency(player.stack)}</div>
       <div className="flex items-center justify-center gap-1 mt-0.5">
         {player.isDealer && (
           <span className="text-[8px] bg-white/10 rounded px-1 text-zinc-400">D</span>

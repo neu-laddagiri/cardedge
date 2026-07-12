@@ -13,6 +13,7 @@ import {
   recommendPokerAction,
 } from "./recommendations";
 import { getCommunityCardArray } from "./monteCarlo";
+import { formatCurrency } from "../money";
 
 export function getPotOddsFormula(
   amountToCall: number,
@@ -20,7 +21,7 @@ export function getPotOddsFormula(
 ): string {
   if (amountToCall <= 0) return "No call required";
   const total = pot + amountToCall;
-  return `${amountToCall} / (${pot} + ${amountToCall}) = ${amountToCall}/${total}`;
+  return `${formatCurrency(amountToCall)} / (${formatCurrency(pot)} + ${formatCurrency(amountToCall)}) = ${amountToCall}/${total}`;
 }
 
 export function formatStreet(street: Street): string {
@@ -165,7 +166,7 @@ export function formatActionLabel(
   amount?: number
 ): string {
   if (amount && (type === "bet" || type === "raise" || type === "call" || type === "all-in")) {
-    return `${type} $${amount}`;
+    return `${type} ${formatCurrency(amount)}`;
   }
   return type;
 }

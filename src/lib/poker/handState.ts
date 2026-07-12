@@ -7,6 +7,7 @@ import type {
   Street,
 } from "./pokerTypes";
 import { sanitizeAmount } from "./validation";
+import { formatCurrency } from "../money";
 
 export interface PokerEngineState {
   players: Player[];
@@ -69,7 +70,7 @@ export function applyPokerAction(
       break;
     case "check":
       if (callAmount > 0) {
-        return { ok: false, error: `${player.name} must call $${callAmount} or fold.` };
+        return { ok: false, error: `${player.name} must call ${formatCurrency(callAmount)} or fold.` };
       }
       break;
     case "call":
@@ -89,14 +90,14 @@ export function applyPokerAction(
       if (state.currentBet <= 0) return { ok: false, error: "Use bet to open the action." };
       contribution = sanitizeAmount(input.amount ?? 0, player.stack);
       if (contribution <= callAmount) {
-        return { ok: false, error: `A raise must add more than the $${callAmount} call.` };
+        return { ok: false, error: `A raise must add more than the ${formatCurrency(callAmount)} call.` };
       }
       nextCurrentBet = player.streetCommitment + contribution;
       if (contribution === player.stack) status = "all-in";
       break;
     }
     case "all-in":
-      if (player.stack <= 0) return { ok: false, error: `${player.name} has no chips remaining.` };
+      if (player.stack <= 0) return { ok: false, error: `${player.name} has no money remaining.` };
       contribution = player.stack;
       status = "all-in";
       nextCurrentBet = Math.max(nextCurrentBet, player.streetCommitment + contribution);
