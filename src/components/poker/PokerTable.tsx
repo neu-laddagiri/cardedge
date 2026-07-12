@@ -10,6 +10,7 @@ export function PokerTable() {
   const pot = usePokerStore((s) => s.pot);
   const players = usePokerStore((s) => s.players);
   const street = usePokerStore((s) => s.street);
+  const actingPlayerId = usePokerStore((s) => s.actingPlayerId);
 
   const board = [
     communityCards.flop1,
@@ -20,7 +21,7 @@ export function PokerTable() {
   ];
 
   return (
-    <div className="relative w-full aspect-[16/10] max-h-[320px] rounded-[50%] border-4 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/80 to-emerald-950 shadow-inner glow-emerald overflow-hidden">
+    <div className="relative h-[340px] w-full overflow-hidden rounded-[38%] border-4 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/80 to-emerald-950 shadow-inner glow-emerald sm:aspect-[16/10] sm:h-auto sm:max-h-[380px] sm:rounded-[50%]">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08)_0%,transparent_70%)]" />
 
       {/* Player seats around the table */}
@@ -36,7 +37,7 @@ export function PokerTable() {
             className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
             style={{ left: `${x}%`, top: `${y}%` }}
           >
-            <PlayerSeat player={player} />
+            <PlayerSeat player={player} isActing={player.id === actingPlayerId} />
           </div>
         );
       })}

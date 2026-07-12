@@ -17,12 +17,12 @@ export function WipBanner() {
         <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#c9a84c]" aria-hidden />
         <p className="text-[11px] leading-snug sm:text-xs sm:leading-normal">
           <span className="font-semibold text-[#c9a84c]">
-            Work in Progress Build
+            CardEdge Beta 0.2
           </span>
           <span className="mx-1.5 hidden text-zinc-600 sm:inline">—</span>
           <span className="text-zinc-400">
-            CardEdge is still under active development, so some odds,
-            recommendations, and interactions may contain bugs.
+            Training-only estimates with tested decision matrices. Never use
+            CardEdge to wager money or violate a gaming venue&apos;s rules.
           </span>
         </p>
       </div>

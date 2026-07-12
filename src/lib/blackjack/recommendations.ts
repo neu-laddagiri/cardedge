@@ -3,7 +3,7 @@ import type {
   BlackjackMove,
   BlackjackRecommendation,
 } from "./blackjackTypes";
-import { getBasicStrategyMove, getFallbackMove } from "./basicStrategy";
+import { getBasicStrategyDecision } from "./basicStrategy";
 import {
   cardToDisplay,
   getDisplayTotal,
@@ -15,22 +15,15 @@ import {
 export function getBlackjackRecommendation(
   input: BlackjackDecisionInput
 ): BlackjackRecommendation | null {
-  const { hand, dealerUpcard, rules, canDouble, canSplit, canSurrender } =
-    input;
-
+  const { hand, dealerUpcard, rules, canDouble, canSplit, canSurrender } = input;
   if (hand.cards.length === 0 || !dealerUpcard) return null;
 
-  const ctx = {
+  const decision = getBasicStrategyDecision(hand.cards, dealerUpcard, {
     canDouble,
     canSplit,
     canSurrender: canSurrender && rules.surrenderAllowed,
-    doubleAfterSplit: rules.doubleAfterSplit,
-  };
-
-  const move = getBasicStrategyMove(hand.cards, dealerUpcard, ctx);
-  const fallbackMove = getFallbackMove(move, ctx);
-  const effectiveMove = fallbackMove ?? move;
-
+    rules,
+  });
   const handType = isBlackjack(hand.cards)
     ? "blackjack"
     : isPair(hand.cards) && hand.cards.length === 2
@@ -39,17 +32,24 @@ export function getBlackjackRecommendation(
         ? "soft"
         : "hard";
 
-  const ruleNotes: string[] = [];
-  if (rules.dealerHitsSoft17) ruleNotes.push("Dealer hits soft 17");
-  else ruleNotes.push("Dealer stands on soft 17");
-  ruleNotes.push(`${rules.numDecks}-deck shoe`);
-  if (rules.surrenderAllowed) ruleNotes.push("Late surrender available");
-  ruleNotes.push(`Blackjack pays ${rules.blackjackPayout}`);
+  const ruleNotes = [
+    rules.dealerHitsSoft17 ? "H17 strategy matrix" : "S17 strategy matrix",
+    `${rules.numDecks}-deck strategy matrix`,
+    rules.doubleAfterSplit ? "Double after split supported" : "No double after split",
+    rules.surrenderAllowed ? "Late surrender matrix enabled" : "No surrender",
+    `Blackjack pays ${rules.blackjackPayout} (payout affects return, not the hit/stand matrix)`,
+  ];
 
   return {
-    move: effectiveMove,
-    fallbackMove: fallbackMove && fallbackMove !== move ? move : undefined,
-    explanation: buildExplanation(hand.cards, dealerUpcard, effectiveMove, handType, ctx),
+    move: decision.move,
+    preferredMove: decision.preferredMove,
+    explanation: buildExplanation(
+      hand.cards,
+      dealerUpcard.rank === "T" ? "10" : dealerUpcard.rank,
+      decision.move,
+      decision.preferredMove,
+      handType
+    ),
     handTotal: getDisplayTotal(hand.cards),
     handType,
     dealerUpcard: cardToDisplay(dealerUpcard),
@@ -59,66 +59,21 @@ export function getBlackjackRecommendation(
 
 function buildExplanation(
   cards: import("./blackjackTypes").BJCard[],
-  dealer: import("./blackjackTypes").BJCard,
+  dealerRank: string,
   move: BlackjackMove,
-  handType: string,
-  ctx: { canDouble: boolean; canSplit: boolean; canSurrender: boolean }
+  preferredMove: BlackjackMove | undefined,
+  handType: BlackjackRecommendation["handType"]
 ): string {
   const total = getDisplayTotal(cards);
-  const dRank = dealer.rank === "T" ? "10" : dealer.rank;
-
-  if (handType === "blackjack") {
-    return "Natural blackjack — no further action needed.";
-  }
-
-  if (handType === "pair") {
-    const pairRank = cards[0].rank;
-    if (move === "split") {
-      if (pairRank === "8") {
-        return "Pair of 8s should be split because 16 is a poor standing hand and splitting improves expected value.";
-      }
-      if (pairRank === "A") {
-        return "Pair of Aces should always be split — two chances at blackjack beat a soft 12.";
-      }
-      return `Pair of ${pairRank}s — basic strategy recommends splitting against dealer ${dRank}.`;
-    }
-    if (pairRank === "T" || pairRank === "J" || pairRank === "Q" || pairRank === "K") {
-      return "Pair of 10-value cards is a strong 20 — standing is the book move.";
-    }
-  }
-
-  if (handType === "soft") {
-    if (move === "double") {
-      return `Soft ${total} against dealer ${dRank} — doubling maximizes value when the dealer is weak.`;
-    }
-    if (move === "stand") {
-      return `Soft ${total} is strong enough to stand against dealer ${dRank}.`;
-    }
-    return `Soft ${total} against dealer ${dRank} — hitting improves the hand without bust risk on one card.`;
-  }
-
-  const hardTotal = parseInt(total.split("/")[0]) || parseInt(total);
-
-  if (move === "surrender") {
-    return `Hard ${hardTotal} against dealer ${dRank} is a weak spot. With surrender available, surrender is the book move; otherwise hit.`;
-  }
-
-  if (move === "double") {
-    return `Hard ${hardTotal} against dealer ${dRank} — doubling down is the basic strategy play when allowed.`;
-  }
-
-  if (move === "stand") {
-    if (hardTotal >= 17) {
-      return `Hard ${hardTotal} is pat — standing is correct regardless of dealer upcard.`;
-    }
-    return `Hard ${hardTotal} against weak dealer ${dRank} (2–6) — dealer bust risk favors standing.`;
-  }
-
-  if (hardTotal >= 13 && hardTotal <= 16 && ["9", "T", "J", "Q", "K", "A"].includes(dealer.rank)) {
-    return `Hard ${hardTotal} against dealer ${dRank} is a weak spot — hitting is standard when surrender is unavailable.`;
-  }
-
-  return `Hard ${hardTotal} against dealer ${dRank} — ${move} is the basic strategy recommendation.`;
+  const unavailable = preferredMove
+    ? ` ${preferredMove[0].toUpperCase()}${preferredMove.slice(1)} is preferred when allowed; ${move} is the correct fallback.`
+    : "";
+  if (handType === "blackjack") return "Natural blackjack — no further action is required.";
+  if (move === "split") return `Split this pair against dealer ${dealerRank}; two independent hands have better expected value than playing the combined total.`;
+  if (move === "surrender") return `Late-surrender ${total} against dealer ${dealerRank}; giving up half the wager has better expected value than continuing under these rules.`;
+  if (move === "double") return `${handType === "soft" ? "Soft" : "Hard"} ${total} against dealer ${dealerRank} is a profitable double-down configuration.${unavailable}`;
+  if (move === "stand") return `${handType === "soft" ? "Soft" : "Hard"} ${total} should stand against dealer ${dealerRank}.${unavailable}`;
+  return `${handType === "soft" ? "Soft" : "Hard"} ${total} should hit against dealer ${dealerRank}.${unavailable}`;
 }
 
 export function getMoveColor(move: BlackjackMove): string {
@@ -133,7 +88,5 @@ export function getMoveColor(move: BlackjackMove): string {
       return "text-violet-400";
     case "surrender":
       return "text-red-400";
-    default:
-      return "text-white";
   }
 }

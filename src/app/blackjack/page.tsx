@@ -8,6 +8,7 @@ import { BlackjackPlayerManager } from "@/components/blackjack/BlackjackPlayerMa
 import { Button } from "@/components/ui/Button";
 import { useBlackjackStore } from "@/store/blackjackStore";
 import { RotateCcw } from "lucide-react";
+import { BlackjackTrainingPanel } from "@/components/blackjack/BlackjackTrainingPanel";
 
 export default function BlackjackPage() {
   const resetTable = useBlackjackStore((s) => s.resetTable);
@@ -41,6 +42,9 @@ export default function BlackjackPage() {
           <div className="lg:col-span-2">
             <BasicStrategyPanel />
           </div>
+        </div>
+        <div className="mt-6">
+          <BlackjackTrainingPanel />
         </div>
       </div>
     </CasinoShell>

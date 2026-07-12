@@ -14,15 +14,15 @@ export function calculateEquityNeeded(amountToCall: number, pot: number): number
   return calculatePotOdds(amountToCall, pot);
 }
 
-const SAFETY_MARGIN = 5;
-
 export function recommendPokerAction(
   equity: number,
   potOdds: number,
-  gameState: PokerGameState
+  gameState: PokerGameState,
+  marginOfError = 0
 ): PokerRecommendation {
-  const { amountToCall, pot } = gameState;
-  const equityNeeded = potOdds + SAFETY_MARGIN;
+  const { amountToCall } = gameState;
+  const lowerEquity = Math.max(0, equity - marginOfError);
+  const upperEquity = Math.min(100, equity + marginOfError);
 
   if (amountToCall === 0) {
     if (equity >= 65) {
@@ -31,7 +31,7 @@ export function recommendPokerAction(
         explanation: `Estimated ${equity.toFixed(1)}% equity with no bet to call. A value bet is the estimated recommendation to build the pot.`,
         potOdds: 0,
         equityNeeded: 0,
-        confidence: "medium",
+        confidence: lowerEquity >= 60 ? "high" : "medium",
       };
     }
     if (equity >= 40) {
@@ -52,30 +52,30 @@ export function recommendPokerAction(
     };
   }
 
-  if (equity < potOdds - SAFETY_MARGIN) {
+  if (upperEquity < potOdds) {
     return {
       action: "fold",
-      explanation: `Estimated ${equity.toFixed(1)}% win equity is below the ${potOdds.toFixed(1)}% pot odds threshold (with safety margin). Folding is the estimated recommendation.`,
+      explanation: `Estimated ${equity.toFixed(1)}% effective equity remains below the ${potOdds.toFixed(1)}% break-even threshold after simulation uncertainty. Folding is the positive-discipline training play.`,
       potOdds,
       equityNeeded: potOdds,
-      confidence: equity < potOdds - 10 ? "high" : "medium",
+      confidence: upperEquity < potOdds - 5 ? "high" : "medium",
     };
   }
 
-  if (equity < equityNeeded) {
+  if (lowerEquity < potOdds) {
     return {
       action: "call",
-      explanation: `Estimated ${equity.toFixed(1)}% equity is slightly above ${potOdds.toFixed(1)}% pot odds. A call is marginal — proceed with caution in training mode.`,
+      explanation: `Estimated ${equity.toFixed(1)}% effective equity overlaps the ${potOdds.toFixed(1)}% break-even threshold. Calling is marginal and sensitive to the modeled ranges.`,
       potOdds,
       equityNeeded: potOdds,
       confidence: "low",
     };
   }
 
-  if (equity >= equityNeeded + 15) {
+  if (lowerEquity >= potOdds + 15) {
     return {
       action: "raise",
-      explanation: `Estimated ${equity.toFixed(1)}% equity is well above the ${potOdds.toFixed(1)}% pot odds needed. Raising for value is the estimated recommendation.`,
+      explanation: `Estimated ${equity.toFixed(1)}% effective equity is comfortably above the ${potOdds.toFixed(1)}% break-even threshold. Raising for value is the training recommendation.`,
       potOdds,
       equityNeeded: potOdds,
       confidence: "high",
@@ -84,7 +84,7 @@ export function recommendPokerAction(
 
   return {
     action: "call",
-    explanation: `Estimated ${equity.toFixed(1)}% equity clears the ${potOdds.toFixed(1)}% pot odds bar. Calling is the estimated recommendation.`,
+    explanation: `Estimated ${equity.toFixed(1)}% effective equity clears the ${potOdds.toFixed(1)}% break-even threshold. Calling is the lower-variance training recommendation.`,
     potOdds,
     equityNeeded: potOdds,
     confidence: "medium",

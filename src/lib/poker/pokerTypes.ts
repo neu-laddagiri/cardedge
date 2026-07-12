@@ -40,6 +40,12 @@ export interface Player {
   isBigBlind: boolean;
   status: PlayerStatus;
   style: OpponentStyle;
+  /** Optional user-defined starting-hand range percentage. */
+  rangeOverride?: number;
+  /** Chips committed during the current betting street. */
+  streetCommitment: number;
+  /** Chips committed during the complete hand. */
+  totalCommitted: number;
   holeCards?: [Card, Card];
 }
 
@@ -60,6 +66,9 @@ export interface PokerAction {
   amount?: number;
   street: Street;
   timestamp: number;
+  potAfter: number;
+  amountToCallAfter: number;
+  recommendationAtAction?: PokerRecommendationAction;
 }
 
 export interface PokerGameState {
@@ -69,7 +78,11 @@ export interface PokerGameState {
   bigBlind: number;
   startingBuyIn: number;
   pot: number;
+  currentBet: number;
   amountToCall: number;
+  actingPlayerId: string | null;
+  actedPlayerIds: string[];
+  handComplete: boolean;
   street: Street;
   heroCards: [Card | null, Card | null];
   communityCards: {
@@ -86,9 +99,14 @@ export interface PokerOddsResult {
   winPercentage: number;
   tiePercentage: number;
   losePercentage: number;
+  /** Pot-share equity: wins plus the hero's fractional share of tied pots. */
+  equityPercentage: number;
+  /** Approximate 95% confidence interval around equity. */
+  marginOfError: number;
   simulations: number;
   bestHand?: string;
   boardTexture?: string[];
+  rangeSummary?: string[];
 }
 
 export type PokerRecommendationAction =
@@ -110,4 +128,36 @@ export interface OpponentThreat {
   category: string;
   likelihood: "low" | "medium" | "high";
   description: string;
+}
+
+export interface OpponentSimulationProfile {
+  id: string;
+  name: string;
+  style: OpponentStyle;
+  /** Approximate percentage of starting hands in the modeled range. */
+  rangePercent: number;
+}
+
+export type SimulationPrecision = "fast" | "balanced" | "precise";
+
+export interface PokerHandRecord {
+  id: string;
+  savedAt: number;
+  street: Street;
+  heroCards: [Card | null, Card | null];
+  communityCards: PokerGameState["communityCards"];
+  players: Player[];
+  actions: PokerAction[];
+  pot: number;
+  currentBet: number;
+  amountToCall: number;
+  actingPlayerId: string | null;
+  actedPlayerIds: string[];
+  handComplete: boolean;
+  odds: PokerOddsResult | null;
+  recommendation: PokerRecommendation | null;
+  actualDecision?: ActionType;
+  followedRecommendation?: boolean;
+  recommendedDecision?: PokerRecommendationAction;
+  note: string;
 }

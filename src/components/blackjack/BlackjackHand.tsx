@@ -62,11 +62,13 @@ export function BlackjackHandDisplay({
             <PlayingCard rank={card.rank} suit={card.suit} size="sm" />
             {onRemoveCard && (
               <button
+                type="button"
+                aria-label={`Remove ${card.rank} of ${card.suit}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRemoveCard(i);
                 }}
-                className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-600 text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-600 text-[11px] text-white opacity-100 transition-opacity sm:h-4 sm:w-4 sm:text-[10px] sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
               >
                 ×
               </button>

@@ -152,7 +152,12 @@ export function buildRecommendation(
 ): PokerRecommendation | null {
   if (!odds) return null;
   const potOdds = calculatePotOdds(state.amountToCall, state.pot);
-  return recommendPokerAction(odds.winPercentage, potOdds, state);
+  return recommendPokerAction(
+    odds.equityPercentage,
+    potOdds,
+    state,
+    odds.marginOfError
+  );
 }
 
 export function formatActionLabel(

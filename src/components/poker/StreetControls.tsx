@@ -41,6 +41,7 @@ export function StreetControls() {
           <button
             key={s}
             onClick={() => setStreet(s)}
+            aria-pressed={street === s}
             className={cn(
               "flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
               street === s
@@ -55,27 +56,33 @@ export function StreetControls() {
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Buy-in</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Next hand buy-in</label>
           <input
+            aria-label="Next hand buy-in"
             type="number"
+            min="0"
             value={startingBuyIn}
             onChange={(e) => setStartingBuyIn(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Small Blind</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Next SB</label>
           <input
+            aria-label="Next hand small blind"
             type="number"
+            min="0"
             value={smallBlind}
             onChange={(e) => setSmallBlindAmount(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Big Blind</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Next BB</label>
           <input
+            aria-label="Next hand big blind"
             type="number"
+            min="0"
             value={bigBlind}
             onChange={(e) => setBigBlindAmount(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm"

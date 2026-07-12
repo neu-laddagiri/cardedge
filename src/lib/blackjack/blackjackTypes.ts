@@ -62,10 +62,33 @@ export type BlackjackMove =
 
 export interface BlackjackRecommendation {
   move: BlackjackMove;
-  fallbackMove?: BlackjackMove;
+  /** The ideal move when the current UI state makes it unavailable. */
+  preferredMove?: BlackjackMove;
   explanation: string;
   handTotal: string;
   handType: "hard" | "soft" | "pair" | "blackjack";
   dealerUpcard: string;
   ruleNotes: string[];
+}
+
+export interface BlackjackDecisionRecord {
+  id: string;
+  createdAt: number;
+  playerName: string;
+  cards: BJCard[];
+  dealerUpcard: BJCard;
+  recommendedMove: BlackjackMove;
+  actualMove: BlackjackMove;
+  correct: boolean;
+  rules: BlackjackRules;
+}
+
+export interface BlackjackSessionRecord {
+  id: string;
+  savedAt: number;
+  players: BlackjackPlayer[];
+  dealerCards: BJCard[];
+  rules: BlackjackRules;
+  decisions: BlackjackDecisionRecord[];
+  note: string;
 }

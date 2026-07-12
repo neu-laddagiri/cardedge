@@ -70,9 +70,9 @@ export function BasicStrategyPanel() {
         >
           {recommendation.move}
         </p>
-        {recommendation.fallbackMove && (
+        {recommendation.preferredMove && (
           <p className="text-xs text-zinc-500 mt-1">
-            Preferred: {recommendation.fallbackMove} (if allowed)
+            Preferred: {recommendation.preferredMove} (currently unavailable)
           </p>
         )}
       </div>

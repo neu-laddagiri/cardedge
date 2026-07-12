@@ -21,8 +21,10 @@ export function BlackjackRulesPanel() {
           <div className="flex gap-1 mt-1">
             {deckOptions.map((n) => (
               <button
+                type="button"
                 key={n}
                 onClick={() => setRules({ numDecks: n })}
+                aria-pressed={rules.numDecks === n}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   rules.numDecks === n
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
@@ -40,8 +42,10 @@ export function BlackjackRulesPanel() {
           <div className="flex gap-1 mt-1">
             {(["3:2", "6:5"] as const).map((p) => (
               <button
+                type="button"
                 key={p}
                 onClick={() => setRules({ blackjackPayout: p })}
+                aria-pressed={rules.blackjackPayout === p}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${
                   rules.blackjackPayout === p
                     ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30"
@@ -67,6 +71,10 @@ export function BlackjackRulesPanel() {
           >
             <span className="text-sm text-zinc-300">{label}</span>
             <button
+              type="button"
+              role="switch"
+              aria-checked={rules[key]}
+              aria-label={label}
               onClick={() => setRules({ [key]: !rules[key] })}
               className={`w-10 h-5 rounded-full transition-colors relative ${
                 rules[key] ? "bg-emerald-600" : "bg-zinc-700"
