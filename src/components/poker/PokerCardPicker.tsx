@@ -31,6 +31,14 @@ export function PokerCardPicker({
   const [pickRank, setPickRank] = useState<Rank | null>(selected?.rank ?? null);
   const [pickSuit, setPickSuit] = useState<Suit | null>(selected?.suit ?? null);
 
+  const togglePicker = () => {
+    if (!open) {
+      setPickRank(selected?.rank ?? null);
+      setPickSuit(selected?.suit ?? null);
+    }
+    setOpen((current) => !current);
+  };
+
   const isUsed = (rank: Rank, suit: Suit) =>
     usedCards.some((c) => cardsEqual(c, { rank, suit }));
 
@@ -58,10 +66,12 @@ export function PokerCardPicker({
           rank={selected?.rank}
           suit={selected?.suit}
           size="sm"
-          onClick={() => setOpen(!open)}
+          onClick={togglePicker}
         />
         {selected && (
           <button
+            type="button"
+            aria-label={`Clear ${label ?? "card"}`}
             onClick={handleClear}
             className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
           >
@@ -84,6 +94,7 @@ export function PokerCardPicker({
                 <div className="flex flex-wrap gap-1">
                   {RANKS.map((rank) => (
                     <button
+                      type="button"
                       key={rank}
                       onClick={() => setPickRank(rank)}
                       className={cn(
@@ -103,6 +114,7 @@ export function PokerCardPicker({
                 <div className="flex flex-wrap gap-1">
                   {SUITS.map((suit) => (
                     <button
+                      type="button"
                       key={suit}
                       onClick={() => setPickSuit(suit)}
                       className={cn(
@@ -126,6 +138,7 @@ export function PokerCardPicker({
                     <>
                       <PlayingCard rank={pickRank} suit={pickSuit} size="sm" />
                       <button
+                        type="button"
                         onClick={handleConfirm}
                         className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
                       >

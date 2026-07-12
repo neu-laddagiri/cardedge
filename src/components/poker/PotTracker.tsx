@@ -18,12 +18,15 @@ export function PotTracker() {
 
   return (
     <GlassCard padding="sm">
-      <SectionHeader title="Pot Tracker" subtitle="Pot odds calculator" />
+      <SectionHeader title="Pot Tracker" subtitle="Auto-updated by actions; manual override available" />
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Current Pot</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Pot before hero call</label>
           <input
+            aria-label="Pot before hero call"
             type="number"
+            min="0"
+            step="1"
             value={pot}
             onChange={(e) => setPot(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-lg font-semibold text-[#c9a84c] tabular-nums"
@@ -32,7 +35,10 @@ export function PotTracker() {
         <div>
           <label className="text-[10px] text-zinc-500 uppercase">Amount to Call</label>
           <input
+            aria-label="Amount hero must call"
             type="number"
+            min="0"
+            step="1"
             value={amountToCall}
             onChange={(e) => setAmountToCall(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-lg font-semibold text-zinc-200 tabular-nums"

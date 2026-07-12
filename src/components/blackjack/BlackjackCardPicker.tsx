@@ -29,6 +29,14 @@ export function BlackjackCardPicker({
   const [pickRank, setPickRank] = useState<BJRank | null>(selected?.rank ?? null);
   const [pickSuit, setPickSuit] = useState<BJSuit | null>(selected?.suit ?? null);
 
+  const togglePicker = () => {
+    if (!open) {
+      setPickRank(selected?.rank ?? null);
+      setPickSuit(selected?.suit ?? null);
+    }
+    setOpen((current) => !current);
+  };
+
   const handleConfirm = () => {
     if (pickRank && pickSuit) {
       onSelect({ rank: pickRank, suit: pickSuit });
@@ -45,7 +53,7 @@ export function BlackjackCardPicker({
         rank={selected?.rank}
         suit={selected?.suit}
         size="sm"
-        onClick={() => setOpen(!open)}
+        onClick={togglePicker}
       />
 
       <AnimatePresence>
@@ -60,6 +68,7 @@ export function BlackjackCardPicker({
               <div className="flex flex-wrap gap-1">
                 {RANKS.map((rank) => (
                   <button
+                    type="button"
                     key={rank}
                     onClick={() => setPickRank(rank as BJRank)}
                     className={cn(
@@ -76,6 +85,7 @@ export function BlackjackCardPicker({
               <div className="flex gap-1">
                 {SUITS.map((suit) => (
                   <button
+                    type="button"
                     key={suit}
                     onClick={() => setPickSuit(suit as BJSuit)}
                     className={cn(
@@ -91,6 +101,7 @@ export function BlackjackCardPicker({
               </div>
               {pickRank && pickSuit && (
                 <button
+                  type="button"
                   onClick={handleConfirm}
                   className="w-full text-xs py-1.5 rounded-lg bg-emerald-600 text-white"
                 >

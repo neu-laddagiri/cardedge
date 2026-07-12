@@ -31,7 +31,7 @@ const features = [
   {
     icon: Users,
     title: "Opponent Ranges",
-    description: "Estimated threat categories based on board texture",
+    description: "Style- and action-weighted opponent range simulations",
   },
   {
     icon: Target,
@@ -46,7 +46,7 @@ const features = [
   {
     icon: LayoutGrid,
     title: "Table State",
-    description: "Visual poker and blackjack table layouts",
+    description: "Validated actions, automatic pot tracking, and local hand history",
   },
 ];
 
@@ -62,7 +62,7 @@ export default function HomePage() {
     <CasinoShell>
       <div className="relative overflow-hidden">
         {/* Animated background elements */}
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           {floatingCards.map((card) => (
             <motion.div
               key={`${card.rank}-${card.suit}`}

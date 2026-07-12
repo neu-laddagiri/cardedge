@@ -11,6 +11,7 @@ import { analyzeOpponentThreats } from "@/lib/poker/pokerUtils";
 import { getCommunityCardArray } from "@/lib/poker/monteCarlo";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { SimulationPrecision } from "@/lib/poker/pokerTypes";
 
 export function PokerOddsPanel() {
   const oddsResult = usePokerStore((s) => s.oddsResult);
@@ -22,7 +23,8 @@ export function PokerOddsPanel() {
   const players = usePokerStore((s) => s.players);
   const communityCards = usePokerStore((s) => s.communityCards);
   const amountToCall = usePokerStore((s) => s.amountToCall);
-  const pot = usePokerStore((s) => s.pot);
+  const precision = usePokerStore((s) => s.precision);
+  const setPrecision = usePokerStore((s) => s.setPrecision);
 
   const hasHeroCards = heroCards[0] && heroCards[1];
   const community = getCommunityCardArray(communityCards);
@@ -67,6 +69,25 @@ export function PokerOddsPanel() {
           </Button>
         </div>
 
+        <div className="mb-4 flex items-center gap-1" aria-label="Simulation precision">
+          {(["fast", "balanced", "precise"] as SimulationPrecision[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setPrecision(option)}
+              aria-pressed={precision === option}
+              className={cn(
+                "flex-1 rounded-lg px-2 py-1 text-[10px] font-medium capitalize transition-colors",
+                precision === option
+                  ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-300"
+                  : "bg-white/5 text-zinc-500 hover:text-zinc-300"
+              )}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+
         {isSimulating ? (
           <div className="flex items-center justify-center py-12 text-zinc-500">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -74,9 +95,14 @@ export function PokerOddsPanel() {
           </div>
         ) : oddsResult ? (
           <>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4" aria-live="polite">
               <StatPill
-                label="Win Equity"
+                label="Effective Equity"
+                value={`${oddsResult.equityPercentage.toFixed(1)}%`}
+                variant="gold"
+              />
+              <StatPill
+                label="Win"
                 value={`${oddsResult.winPercentage.toFixed(1)}%`}
                 variant="emerald"
               />
@@ -91,6 +117,9 @@ export function PokerOddsPanel() {
                 variant="red"
               />
             </div>
+            <p className="-mt-4 mb-5 text-center text-[10px] text-zinc-600">
+              95% interval ±{oddsResult.marginOfError.toFixed(1)} percentage points
+            </p>
 
             {recommendation && (
               <div className="rounded-xl bg-white/5 border border-white/10 p-4 mb-4">
@@ -144,6 +173,15 @@ export function PokerOddsPanel() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {oddsResult.rangeSummary && (
+              <div className="mt-4 border-t border-white/5 pt-4">
+                <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Modeled ranges</p>
+                {oddsResult.rangeSummary.map((summary) => (
+                  <p key={summary} className="text-[11px] text-zinc-500">• {summary}</p>
+                ))}
               </div>
             )}
           </>

@@ -10,9 +10,12 @@ import { PokerActionPanel } from "@/components/poker/PokerActionPanel";
 import { Button } from "@/components/ui/Button";
 import { usePokerStore } from "@/store/pokerStore";
 import { RotateCcw } from "lucide-react";
+import { PokerHistoryPanel } from "@/components/poker/PokerHistoryPanel";
+import { InlineAlert } from "@/components/ui/InlineAlert";
 
 export default function PokerPage() {
   const resetGame = usePokerStore((s) => s.resetGame);
+  const lastError = usePokerStore((s) => s.lastError);
 
   return (
     <CasinoShell>
@@ -29,6 +32,8 @@ export default function PokerPage() {
             New Hand
           </Button>
         </div>
+
+        <InlineAlert message={lastError} />
 
         <div className="mb-6">
           <PokerTable />
@@ -48,6 +53,9 @@ export default function PokerPage() {
           <div className="lg:col-span-1">
             <PokerOddsPanel />
           </div>
+        </div>
+        <div className="mt-6">
+          <PokerHistoryPanel />
         </div>
       </div>
     </CasinoShell>

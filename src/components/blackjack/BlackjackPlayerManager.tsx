@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { BlackjackCardPicker } from "./BlackjackCardPicker";
 import { UserPlus, Trash2, Plus, Split } from "lucide-react";
 import type { BJCard } from "@/lib/blackjack/blackjackTypes";
+import { InlineAlert } from "@/components/ui/InlineAlert";
+import { isPair } from "@/lib/blackjack/handValue";
 
 export function BlackjackPlayerManager() {
   const players = useBlackjackStore((s) => s.players);
@@ -20,6 +22,7 @@ export function BlackjackPlayerManager() {
   const addHand = useBlackjackStore((s) => s.addHand);
   const splitHand = useBlackjackStore((s) => s.splitHand);
   const addCardToHand = useBlackjackStore((s) => s.addCardToHand);
+  const hitHand = useBlackjackStore((s) => s.hitHand);
   const standHand = useBlackjackStore((s) => s.standHand);
   const doubleHand = useBlackjackStore((s) => s.doubleHand);
   const surrenderHand = useBlackjackStore((s) => s.surrenderHand);
@@ -27,6 +30,7 @@ export function BlackjackPlayerManager() {
   const addDealerCard = useBlackjackStore((s) => s.addDealerCard);
   const removeDealerCard = useBlackjackStore((s) => s.removeDealerCard);
   const rules = useBlackjackStore((s) => s.rules);
+  const lastError = useBlackjackStore((s) => s.lastError);
 
   const [pendingCard, setPendingCard] = useState<BJCard | null>(null);
 
@@ -38,9 +42,16 @@ export function BlackjackPlayerManager() {
 
   const handleHit = () => {
     if (!pendingCard || !activePlayerId || !activeHandId) return;
-    addCardToHand(activePlayerId, activeHandId, pendingCard);
+    hitHand(activePlayerId, activeHandId, pendingCard);
     setPendingCard(null);
   };
+
+  const activePlayer = players.find((player) => player.id === activePlayerId);
+  const activeHand = activePlayer?.hands.find((hand) => hand.id === activeHandId);
+  const handIsActive = activeHand?.status === "active";
+  const canSplit = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && isPair(activeHand.cards) && (activePlayer?.hands.length ?? 0) < 4);
+  const canDouble = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && (!activeHand.isSplit || rules.doubleAfterSplit));
+  const canSurrender = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && !activeHand.isSplit && rules.surrenderAllowed);
 
   const handleDouble = () => {
     if (!pendingCard || !activePlayerId || !activeHandId) return;
@@ -50,6 +61,7 @@ export function BlackjackPlayerManager() {
 
   return (
     <div className="space-y-4">
+      <InlineAlert message={lastError} />
       <GlassCard padding="sm">
         <SectionHeader title="Dealer Cards" subtitle="Upcard required" />
         <div className="flex flex-wrap gap-2 mb-2">
@@ -86,12 +98,13 @@ export function BlackjackPlayerManager() {
             <div key={player.id} className="rounded-xl bg-white/3 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <input
+                  aria-label={`Player name for ${player.name}`}
                   value={player.name}
                   onChange={(e) => renamePlayer(player.id, e.target.value)}
                   className="flex-1 bg-transparent text-sm font-medium border-b border-white/10 outline-none"
                 />
                 {players.length > 1 && (
-                  <button onClick={() => removePlayer(player.id)}>
+                  <button type="button" onClick={() => removePlayer(player.id)} aria-label={`Remove ${player.name}`}>
                     <Trash2 className="h-3.5 w-3.5 text-zinc-600 hover:text-red-400" />
                   </button>
                 )}
@@ -105,6 +118,7 @@ export function BlackjackPlayerManager() {
                     size="sm"
                     variant="ghost"
                     onClick={() => splitHand(player.id, activeHandId)}
+                    disabled={!canSplit}
                   >
                     <Split className="h-3 w-3" /> Split
                   </Button>
@@ -127,10 +141,10 @@ export function BlackjackPlayerManager() {
         />
 
         <div className="grid grid-cols-2 gap-2 mt-4">
-          <Button size="sm" onClick={handleAddCardToActive} disabled={!pendingCard}>
+          <Button size="sm" onClick={handleAddCardToActive} disabled={!pendingCard || !handIsActive}>
             Add to Hand
           </Button>
-          <Button size="sm" variant="secondary" onClick={handleHit} disabled={!pendingCard}>
+          <Button size="sm" variant="secondary" onClick={handleHit} disabled={!pendingCard || !handIsActive}>
             Hit
           </Button>
           <Button
@@ -141,10 +155,11 @@ export function BlackjackPlayerManager() {
               activeHandId &&
               standHand(activePlayerId, activeHandId)
             }
+            disabled={!handIsActive}
           >
             Stand
           </Button>
-          <Button size="sm" variant="gold" onClick={handleDouble} disabled={!pendingCard}>
+          <Button size="sm" variant="gold" onClick={handleDouble} disabled={!pendingCard || !canDouble}>
             Double
           </Button>
           {rules.surrenderAllowed && (
@@ -156,6 +171,7 @@ export function BlackjackPlayerManager() {
                 activeHandId &&
                 surrenderHand(activePlayerId, activeHandId)
               }
+              disabled={!canSurrender}
             >
               Surrender
             </Button>

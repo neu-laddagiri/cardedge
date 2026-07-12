@@ -16,14 +16,14 @@ export function NavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b border-white/8 glass-panel">
+    <nav aria-label="Primary navigation" className="border-b border-white/8 glass-panel">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 group">
           <motion.div
             whileHover={{ rotate: 15 }}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400"
           >
-            <Spade className="h-4 w-4" />
+            <Spade className="h-4 w-4" aria-hidden="true" />
           </motion.div>
           <span className="text-lg font-semibold tracking-tight">
             Card<span className="text-gold text-[#c9a84c]">Edge</span>
@@ -40,6 +40,7 @@ export function NavBar() {
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative rounded-lg px-4 py-2 text-sm font-medium transition-colors",
                   active

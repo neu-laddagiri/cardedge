@@ -16,13 +16,6 @@ interface PlayingCardProps {
   className?: string;
 }
 
-const suitColors: Record<Suit, string> = {
-  hearts: "text-red-500",
-  diamonds: "text-red-500",
-  clubs: "text-zinc-900",
-  spades: "text-zinc-900",
-};
-
 const suitSymbols: Record<Suit, string> = {
   clubs: "♣",
   diamonds: "♦",
@@ -47,41 +40,86 @@ export function PlayingCard({
   className,
 }: PlayingCardProps) {
   const isRed = suit === "hearts" || suit === "diamonds";
+  const cardLabel = rank && suit ? `${rank} of ${suit}` : "Empty card slot";
 
   if (faceDown || !rank || !suit) {
+    const content = (
+      <div className="h-[70%] w-[70%] rounded border border-[#c9a84c]/20 bg-emerald-700/30" />
+    );
+    if (onClick) {
+      return (
+        <motion.button
+          type="button"
+          whileHover={{ y: -2 }}
+          onClick={onClick}
+          aria-label={faceDown ? "Face-down card" : "Choose a card"}
+          aria-pressed={selected}
+          className={cn(
+            sizes[size],
+            "flex cursor-pointer items-center justify-center rounded-lg border-2 border-[#c9a84c]/40 bg-gradient-to-br from-emerald-800 to-emerald-950 shadow-lg",
+            selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
+            className
+          )}
+        >
+          {content}
+        </motion.button>
+      );
+    }
     return (
       <motion.div
-        whileHover={onClick ? { y: -2 } : undefined}
-        onClick={onClick}
+        aria-label={faceDown ? "Face-down card" : cardLabel}
+        role="img"
         className={cn(
           sizes[size],
-          "rounded-lg border-2 border-[#c9a84c]/40 bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center cursor-default shadow-lg",
-          onClick && "cursor-pointer",
+          "flex cursor-default items-center justify-center rounded-lg border-2 border-[#c9a84c]/40 bg-gradient-to-br from-emerald-800 to-emerald-950 shadow-lg",
           selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
           className
         )}
       >
-        <div className="h-[70%] w-[70%] rounded border border-[#c9a84c]/20 bg-emerald-700/30" />
+        {content}
       </motion.div>
     );
   }
 
-  return (
-    <motion.div
-      whileHover={onClick ? { y: -4, rotate: -2 } : undefined}
-      onClick={onClick}
-      className={cn(
-        sizes[size],
-        "rounded-lg bg-white border border-zinc-200 shadow-lg flex flex-col items-center justify-center font-bold select-none",
-        onClick && "cursor-pointer",
-        selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
-        className
-      )}
-    >
+  const content = (
+    <>
       <span className={cn(isRed ? "text-red-600" : "text-zinc-900")}>{rank}</span>
       <span className={cn("text-lg leading-none", isRed ? "text-red-600" : "text-zinc-900")}>
         {suitSymbols[suit]}
       </span>
+    </>
+  );
+  if (onClick) {
+    return (
+      <motion.button
+        type="button"
+        whileHover={{ y: -4, rotate: -2 }}
+        onClick={onClick}
+        aria-label={`${cardLabel}; choose a different card`}
+        aria-pressed={selected}
+        className={cn(
+          sizes[size],
+          "flex cursor-pointer select-none flex-col items-center justify-center rounded-lg border border-zinc-200 bg-white font-bold shadow-lg",
+          selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
+          className
+        )}
+      >
+        {content}
+      </motion.button>
+    );
+  }
+  return (
+    <motion.div
+      role="img"
+      aria-label={cardLabel}
+      className={cn(
+        sizes[size],
+        "rounded-lg bg-white border border-zinc-200 shadow-lg flex flex-col items-center justify-center font-bold select-none",
+        selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
+        className
+      )}
+    >
+      {content}
     </motion.div>
   );
 }
@@ -96,15 +134,22 @@ export function EmptyCardSlot({
   label?: string;
 }) {
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        sizes[size],
-        "rounded-lg border-2 border-dashed border-white/15 flex items-center justify-center text-white/30 text-[10px]",
-        onClick && "cursor-pointer hover:border-emerald-500/40 hover:text-emerald-400/60 transition-colors"
-      )}
-    >
-      {label ?? "+"}
-    </div>
+    onClick ? (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label ?? "Add card"}
+        className={cn(
+          sizes[size],
+          "flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-white/15 text-[10px] text-white/30 transition-colors hover:border-emerald-500/40 hover:text-emerald-400/60"
+        )}
+      >
+        {label ?? "+"}
+      </button>
+    ) : (
+      <div className={cn(sizes[size], "flex items-center justify-center rounded-lg border-2 border-dashed border-white/15 text-[10px] text-white/30")}>
+        {label ?? "+"}
+      </div>
+    )
   );
 }
