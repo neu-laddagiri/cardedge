@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-07-12
+
+- Changed the default poker setup to a $20 buy-in with $0.25/$0.50 blinds.
+- Changed the default blackjack hand bet to $1.
+- Migrated the previous $200/$1/$2 poker defaults and $25 blackjack default while preserving custom settings.
+
 ## 0.3.0 — 2026-07-11
 
 - Rebuilt the application shell for phone-first use with a persistent bottom navigation and compact top bar.

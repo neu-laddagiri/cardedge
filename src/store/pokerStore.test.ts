@@ -6,6 +6,15 @@ describe("poker store integration", () => {
     usePokerStore.getState().resetGame();
   });
 
+  it("starts cash games at the requested default stakes", () => {
+    const state = usePokerStore.getState();
+    expect(state.startingBuyIn).toBe(20);
+    expect(state.smallBlind).toBe(0.25);
+    expect(state.bigBlind).toBe(0.5);
+    expect(state.pot).toBe(0.75);
+    expect(state.amountToCall).toBe(0.25);
+  });
+
   it("advances a heads-up betting round and supports lossless undo", () => {
     let state = usePokerStore.getState();
     const heroId = state.heroId!;
@@ -15,7 +24,7 @@ describe("poker store integration", () => {
     usePokerStore.getState().addAction(villainId, "check");
     state = usePokerStore.getState();
     expect(state.street).toBe("flop");
-    expect(state.pot).toBe(4);
+    expect(state.pot).toBe(1);
 
     state.undoLastAction();
     state = usePokerStore.getState();
@@ -24,8 +33,8 @@ describe("poker store integration", () => {
 
     state.undoLastAction();
     state = usePokerStore.getState();
-    expect(state.pot).toBe(3);
-    expect(state.amountToCall).toBe(1);
+    expect(state.pot).toBe(0.75);
+    expect(state.amountToCall).toBe(0.25);
   });
 
   it("blocks seat changes after betting starts", () => {

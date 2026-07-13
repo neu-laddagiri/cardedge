@@ -18,11 +18,13 @@ import { validateShoe } from "@/lib/blackjack/shoe";
 let playerIdCounter = 1;
 let handIdCounter = 1;
 
-function createHand(bet = 25): BlackjackHand {
+const DEFAULT_BET = 1;
+
+function createHand(bet = DEFAULT_BET): BlackjackHand {
   return { id: `h${handIdCounter++}`, cards: [], status: "active", isSplit: false, bet };
 }
 
-function createDefaultPlayers(defaultBet = 25): BlackjackPlayer[] {
+function createDefaultPlayers(defaultBet = DEFAULT_BET): BlackjackPlayer[] {
   return [{ id: `bj${playerIdCounter++}`, name: "Player 1", hands: [createHand(defaultBet)] }];
 }
 
@@ -144,7 +146,7 @@ export const useBlackjackStore = create<BlackjackStore>()(
         surrenderAllowed: true,
         blackjackPayout: "3:2",
       },
-      defaultBet: 25,
+      defaultBet: DEFAULT_BET,
       players: defaultPlayers,
       dealerCards: [],
       activePlayerId: defaultPlayers[0]?.id ?? null,
@@ -390,7 +392,7 @@ export const useBlackjackStore = create<BlackjackStore>()(
     }),
     {
       name: "cardedge-blackjack-v2",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         rules: state.rules,
@@ -398,10 +400,16 @@ export const useBlackjackStore = create<BlackjackStore>()(
         decisions: state.decisions,
         savedSessions: state.savedSessions,
       }),
-      migrate: (persisted) => ({
-        defaultBet: 25,
-        ...(persisted as Partial<BlackjackStore>),
-      }) as BlackjackStore,
+      migrate: (persisted) => {
+        const state = persisted as Partial<BlackjackStore>;
+        return {
+          ...state,
+          defaultBet:
+            state.defaultBet === undefined || state.defaultBet === 25
+              ? DEFAULT_BET
+              : state.defaultBet,
+        } as BlackjackStore;
+      },
     }
   )
 );

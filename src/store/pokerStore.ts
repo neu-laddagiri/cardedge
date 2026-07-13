@@ -44,6 +44,10 @@ const SIMULATION_COUNTS: Record<SimulationPrecision, number> = {
   precise: 20000,
 };
 
+const DEFAULT_BUY_IN = 20;
+const DEFAULT_SMALL_BLIND = 0.25;
+const DEFAULT_BIG_BLIND = 0.5;
+
 type PokerSnapshot = PokerEngineState;
 
 function createPlayer(name: string, stack: number, position: number): Player {
@@ -63,7 +67,11 @@ function createPlayer(name: string, stack: number, position: number): Player {
   };
 }
 
-function createInitialTable(startingBuyIn = 200, smallBlind = 1, bigBlind = 2) {
+function createInitialTable(
+  startingBuyIn = DEFAULT_BUY_IN,
+  smallBlind = DEFAULT_SMALL_BLIND,
+  bigBlind = DEFAULT_BIG_BLIND
+) {
   playerIdCounter = 1;
   const players = normalizeSeatAssignments([
     createPlayer("Hero", startingBuyIn, 0),
@@ -197,9 +205,9 @@ export const usePokerStore = create<PokerStore>()(
     (set, get) => ({
       players: initialTable.players,
       heroId: initialTable.heroId,
-      startingBuyIn: 200,
-      smallBlind: 1,
-      bigBlind: 2,
+      startingBuyIn: DEFAULT_BUY_IN,
+      smallBlind: DEFAULT_SMALL_BLIND,
+      bigBlind: DEFAULT_BIG_BLIND,
       pot: initialTable.pot,
       currentBet: initialTable.currentBet,
       amountToCall: initialTable.amountToCall,
@@ -555,7 +563,7 @@ export const usePokerStore = create<PokerStore>()(
     }),
     {
       name: "cardedge-poker-v2",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         startingBuyIn: state.startingBuyIn,
@@ -565,7 +573,24 @@ export const usePokerStore = create<PokerStore>()(
         simulationCount: state.simulationCount,
         savedHands: state.savedHands,
       }),
-      migrate: (persisted) => persisted as PokerStore,
+      migrate: (persisted) => {
+        const state = persisted as Partial<PokerStore>;
+        return {
+          ...state,
+          startingBuyIn:
+            state.startingBuyIn === undefined || state.startingBuyIn === 200
+              ? DEFAULT_BUY_IN
+              : state.startingBuyIn,
+          smallBlind:
+            state.smallBlind === undefined || state.smallBlind === 1
+              ? DEFAULT_SMALL_BLIND
+              : state.smallBlind,
+          bigBlind:
+            state.bigBlind === undefined || state.bigBlind === 2
+              ? DEFAULT_BIG_BLIND
+              : state.bigBlind,
+        } as PokerStore;
+      },
     }
   )
 );
