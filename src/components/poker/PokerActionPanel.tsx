@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { formatActionLabel } from "@/lib/poker/pokerUtils";
 import { Undo2 } from "lucide-react";
+import { formatCurrency } from "@/lib/money";
 
 const ACTION_TYPES = ["fold", "check", "call", "bet", "raise", "all-in"] as const;
 
@@ -41,10 +42,10 @@ export function PokerActionPanel() {
       <SectionHeader title="Action Log" subtitle="Training mode — track table action" />
       <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-white/3 px-2 py-1.5 text-zinc-400">
-          Current bet <span className="float-right text-zinc-200">${currentBet}</span>
+          Current bet <span className="float-right text-zinc-200">{formatCurrency(currentBet)}</span>
         </div>
         <div className="rounded-lg bg-white/3 px-2 py-1.5 text-zinc-400">
-          Hero call <span className="float-right text-zinc-200">${amountToCall}</span>
+          Hero call <span className="float-right text-zinc-200">{formatCurrency(amountToCall)}</span>
         </div>
       </div>
       <p className="mb-3 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2 py-1.5 text-xs text-emerald-300">
@@ -86,13 +87,14 @@ export function PokerActionPanel() {
         </div>
         <div className="col-span-2">
           <label htmlFor="poker-action-amount" className="text-[10px] text-zinc-500 uppercase">
-            Chips added {actionType === "bet" || actionType === "raise" ? "(required)" : "(automatic)"}
+            Dollars added {actionType === "bet" || actionType === "raise" ? "(required)" : "(automatic)"}
           </label>
           <input
             id="poker-action-amount"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
+            inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={actionType === "call" || actionType === "all-in" ? "Calculated automatically" : "0"}

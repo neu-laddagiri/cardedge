@@ -25,7 +25,7 @@ export function BlackjackRulesPanel() {
                 key={n}
                 onClick={() => setRules({ numDecks: n })}
                 aria-pressed={rules.numDecks === n}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`min-h-11 flex-1 rounded-xl text-xs font-medium transition-colors ${
                   rules.numDecks === n
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                     : "bg-white/5 text-zinc-500"
@@ -46,7 +46,7 @@ export function BlackjackRulesPanel() {
                 key={p}
                 onClick={() => setRules({ blackjackPayout: p })}
                 aria-pressed={rules.blackjackPayout === p}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${
+                className={`min-h-11 flex-1 rounded-xl text-xs font-medium ${
                   rules.blackjackPayout === p
                     ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30"
                     : "bg-white/5 text-zinc-500"
@@ -67,7 +67,7 @@ export function BlackjackRulesPanel() {
         ).map(([key, label]) => (
           <label
             key={key}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex min-h-12 cursor-pointer items-center justify-between"
           >
             <span className="text-sm text-zinc-300">{label}</span>
             <button
@@ -76,13 +76,13 @@ export function BlackjackRulesPanel() {
               aria-checked={rules[key]}
               aria-label={label}
               onClick={() => setRules({ [key]: !rules[key] })}
-              className={`w-10 h-5 rounded-full transition-colors relative ${
+              className={`relative h-7 w-12 rounded-full transition-colors ${
                 rules[key] ? "bg-emerald-600" : "bg-zinc-700"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                  rules[key] ? "left-5" : "left-0.5"
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-transform ${
+                  rules[key] ? "left-6" : "left-1"
                 }`}
               />
             </button>

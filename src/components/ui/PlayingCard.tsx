@@ -56,7 +56,7 @@ export function PlayingCard({
           aria-pressed={selected}
           className={cn(
             sizes[size],
-            "flex cursor-pointer items-center justify-center rounded-lg border-2 border-[#c9a84c]/40 bg-gradient-to-br from-emerald-800 to-emerald-950 shadow-lg",
+            "flex min-w-11 cursor-pointer items-center justify-center rounded-lg border-2 border-[#c9a84c]/40 bg-gradient-to-br from-emerald-800 to-emerald-950 shadow-lg",
             selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
             className
           )}
@@ -99,7 +99,7 @@ export function PlayingCard({
         aria-pressed={selected}
         className={cn(
           sizes[size],
-          "flex cursor-pointer select-none flex-col items-center justify-center rounded-lg border border-zinc-200 bg-white font-bold shadow-lg",
+          "flex min-w-11 cursor-pointer select-none flex-col items-center justify-center rounded-lg border border-zinc-200 bg-white font-bold shadow-lg",
           selected && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#050807]",
           className
         )}

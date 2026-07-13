@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { MotionPreferences } from "@/components/layout/MotionPreferences";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import { UserDataSync } from "@/components/auth/UserDataSync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,7 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col felt-gradient">
-        <MotionPreferences>{children}</MotionPreferences>
+        <AuthProvider>
+          <UserDataSync />
+          <MotionPreferences>{children}</MotionPreferences>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

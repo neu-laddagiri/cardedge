@@ -14,15 +14,15 @@ export function BlackjackTable() {
   const removeCardFromHand = useBlackjackStore((s) => s.removeCardFromHand);
 
   return (
-    <div className="relative w-full rounded-3xl border-4 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/70 to-emerald-950 p-6 min-h-[360px] glow-emerald">
+    <div className="relative min-h-[300px] w-full rounded-[2rem] border-2 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/70 to-emerald-950 p-4 glow-emerald">
       <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.06)_0%,transparent_70%)]" />
 
       {/* Dealer */}
-      <div className="relative mb-8 text-center">
+      <div className="relative mb-5 text-center">
         <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Dealer</p>
         <div className="flex justify-center gap-2">
           {dealerCards.length === 0 ? (
-            <PlayingCard faceDown size="md" />
+            <PlayingCard faceDown size="sm" />
           ) : (
             dealerCards.map((card, i) => (
               <motion.div
@@ -31,7 +31,7 @@ export function BlackjackTable() {
                 animate={{ rotateY: 0, opacity: 1 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <PlayingCard rank={card.rank} suit={card.suit} size="md" />
+                <PlayingCard rank={card.rank} suit={card.suit} size="sm" />
               </motion.div>
             ))
           )}
@@ -39,7 +39,7 @@ export function BlackjackTable() {
       </div>
 
       {/* Players */}
-      <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="relative grid grid-cols-1 gap-3 sm:grid-cols-2">
         {players.map((player) => (
           <div key={player.id}>
             <p className="text-xs font-medium text-zinc-400 mb-2">{player.name}</p>

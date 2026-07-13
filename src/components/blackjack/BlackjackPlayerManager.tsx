@@ -10,6 +10,7 @@ import { UserPlus, Trash2, Plus, Split } from "lucide-react";
 import type { BJCard } from "@/lib/blackjack/blackjackTypes";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { isPair } from "@/lib/blackjack/handValue";
+import { BlackjackHandDisplay } from "./BlackjackHand";
 
 export function BlackjackPlayerManager() {
   const players = useBlackjackStore((s) => s.players);
@@ -29,6 +30,10 @@ export function BlackjackPlayerManager() {
   const setDealerCard = useBlackjackStore((s) => s.setDealerCard);
   const addDealerCard = useBlackjackStore((s) => s.addDealerCard);
   const removeDealerCard = useBlackjackStore((s) => s.removeDealerCard);
+  const removeCardFromHand = useBlackjackStore((s) => s.removeCardFromHand);
+  const setActiveHand = useBlackjackStore((s) => s.setActiveHand);
+  const setHandBet = useBlackjackStore((s) => s.setHandBet);
+  const setDefaultBet = useBlackjackStore((s) => s.setDefaultBet);
   const rules = useBlackjackStore((s) => s.rules);
   const lastError = useBlackjackStore((s) => s.lastError);
 
@@ -59,11 +64,17 @@ export function BlackjackPlayerManager() {
     setPendingCard(null);
   };
 
+  const updateActiveBet = (amount: number) => {
+    if (!activePlayerId || !activeHandId) return;
+    setHandBet(activePlayerId, activeHandId, amount);
+    setDefaultBet(amount);
+  };
+
   return (
     <div className="space-y-4">
       <InlineAlert message={lastError} />
       <GlassCard padding="sm">
-        <SectionHeader title="Dealer Cards" subtitle="Upcard required" />
+        <SectionHeader title="Dealer" subtitle="Add the visible upcard first" />
         <div className="flex flex-wrap gap-2 mb-2">
           {dealerCards.map((card, i) => (
             <div key={i} className="relative">
@@ -87,7 +98,7 @@ export function BlackjackPlayerManager() {
 
       <GlassCard padding="sm">
         <div className="flex items-center justify-between mb-4">
-          <SectionHeader title="Players & Hands" />
+          <SectionHeader title="Your Hands" subtitle="Tap a hand to make it active" />
           <Button size="sm" variant="secondary" onClick={addPlayer}>
             <UserPlus className="h-3 w-3" />
           </Button>
@@ -124,16 +135,41 @@ export function BlackjackPlayerManager() {
                   </Button>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-600">
-                {player.hands.length} hand(s)
-              </p>
+              <div className="space-y-2">
+                {player.hands.map((hand) => (
+                  <BlackjackHandDisplay
+                    key={hand.id}
+                    hand={hand}
+                    isActive={player.id === activePlayerId && hand.id === activeHandId}
+                    onClick={() => setActiveHand(player.id, hand.id)}
+                    onRemoveCard={(index) => removeCardFromHand(player.id, hand.id, index)}
+                  />
+                ))}
+              </div>
             </div>
           ))}
         </div>
       </GlassCard>
 
       <GlassCard padding="sm">
-        <SectionHeader title="Card Input" subtitle="Pick a card, then apply action" />
+        <SectionHeader title="Next Move" subtitle="Choose a card only when the move needs one" />
+        {activeHand && (
+          <label className="mb-4 block text-xs text-zinc-500">
+            Active bet ($)
+            <input
+              aria-label="Active blackjack bet in dollars"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={activeHand.bet}
+              disabled={activeHand.cards.length > 0}
+              onChange={(event) => updateActiveBet(Number(event.target.value) || 0)}
+              className="mobile-input mt-1.5"
+            />
+            {activeHand.cards.length > 0 && <span className="mt-1 block text-[10px] text-zinc-600">Start a new hand to change the bet.</span>}
+          </label>
+        )}
         <BlackjackCardPicker
           selected={pendingCard}
           onSelect={setPendingCard}

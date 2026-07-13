@@ -1,65 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
-import { Spade } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/poker", label: "Poker" },
-  { href: "/blackjack", label: "Blackjack" },
-];
+import { Cloud, CloudOff, Spade, UserRound } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useSyncStatusStore } from "@/store/syncStatusStore";
 
 export function NavBar() {
-  const pathname = usePathname();
+  const { user, loading } = useAuth();
+  const syncStatus = useSyncStatusStore((state) => state.status);
 
   return (
-    <nav aria-label="Primary navigation" className="border-b border-white/8 glass-panel">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 group">
-          <motion.div
-            whileHover={{ rotate: 15 }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400"
-          >
+    <nav aria-label="Top navigation" className="top-bar">
+      <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between px-4">
+        <Link href="/" className="flex min-h-11 items-center gap-2" aria-label="CardEdge home">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
             <Spade className="h-4 w-4" aria-hidden="true" />
-          </motion.div>
-          <span className="text-lg font-semibold tracking-tight">
-            Card<span className="text-gold text-[#c9a84c]">Edge</span>
+          </span>
+          <span className="text-lg font-semibold tracking-tight text-zinc-100">
+            Card<span className="text-[#d7b75b]">Edge</span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-1">
-          {links.map((link) => {
-            const active =
-              link.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "relative rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "text-emerald-400"
-                    : "text-zinc-400 hover:text-zinc-200"
-                )}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="nav-active"
-                    className="absolute inset-0 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                  />
-                )}
-                <span className="relative">{link.label}</span>
-              </Link>
-            );
-          })}
-        </div>
+        <Link
+          href={user ? "/account" : "/login"}
+          className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm text-zinc-300"
+          aria-label={user ? "Open account and sync settings" : "Sign in"}
+        >
+          {!loading && user ? (
+            syncStatus === "error" ? (
+              <CloudOff className="h-4 w-4 text-amber-400" aria-hidden="true" />
+            ) : (
+              <Cloud className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+            )
+          ) : (
+            <UserRound className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+          )}
+          <span className="max-w-28 truncate">{loading ? "" : user?.email?.split("@")[0] ?? "Sign in"}</span>
+        </Link>
       </div>
     </nav>
   );

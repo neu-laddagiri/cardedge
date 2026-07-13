@@ -63,7 +63,7 @@ function createPlayer(name: string, stack: number, position: number): Player {
   };
 }
 
-function createInitialTable(startingBuyIn = 2000, smallBlind = 10, bigBlind = 20) {
+function createInitialTable(startingBuyIn = 200, smallBlind = 1, bigBlind = 2) {
   playerIdCounter = 1;
   const players = normalizeSeatAssignments([
     createPlayer("Hero", startingBuyIn, 0),
@@ -151,6 +151,7 @@ interface PokerStore {
   saveCurrentHand: () => void;
   deleteSavedHand: (id: string) => void;
   loadSavedHand: (id: string) => void;
+  replaceSavedHands: (hands: PokerHandRecord[]) => void;
   resetGame: () => void;
 }
 
@@ -196,9 +197,9 @@ export const usePokerStore = create<PokerStore>()(
     (set, get) => ({
       players: initialTable.players,
       heroId: initialTable.heroId,
-      startingBuyIn: 2000,
-      smallBlind: 10,
-      bigBlind: 20,
+      startingBuyIn: 200,
+      smallBlind: 1,
+      bigBlind: 2,
       pot: initialTable.pot,
       currentBet: initialTable.currentBet,
       amountToCall: initialTable.amountToCall,
@@ -516,6 +517,11 @@ export const usePokerStore = create<PokerStore>()(
           lastError: null,
         };
       }),
+      replaceSavedHands: (savedHands) => set({
+        savedHands: [...savedHands]
+          .sort((a, b) => b.savedAt - a.savedAt)
+          .slice(0, 100),
+      }),
       resetGame: () => {
         cancelPokerSimulation();
         actionIdCounter = 1;
@@ -549,7 +555,7 @@ export const usePokerStore = create<PokerStore>()(
     }),
     {
       name: "cardedge-poker-v2",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         startingBuyIn: state.startingBuyIn,
@@ -559,6 +565,7 @@ export const usePokerStore = create<PokerStore>()(
         simulationCount: state.simulationCount,
         savedHands: state.savedHands,
       }),
+      migrate: (persisted) => persisted as PokerStore,
     }
   )
 );

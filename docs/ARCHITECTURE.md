@@ -6,7 +6,8 @@
 2. UI components never duplicate betting or strategy rules.
 3. Expected user errors are represented as readable state, not thrown exceptions.
 4. Expensive poker simulations run outside the main UI thread.
-5. User hand data remains local unless a future opt-in synchronization feature is introduced.
+5. Guest data remains local; authenticated sync is opt-in and protected by database row-level security.
+6. Money shown to users is denominated in US dollars, rounded to cents at input boundaries, and stored as integer cents in the results ledger.
 
 ## Poker flow
 
@@ -32,7 +33,13 @@ The store validates every added card against the configured shoe. An exact rank-
 
 ## Persistence
 
-Zustand's versioned persistence stores only user preferences and saved training records. Transient worker state, errors, current simulations, and undo snapshots are not persisted. Saved records can be replayed into the active table.
+Zustand's versioned persistence stores user preferences, saved training records, and the guest result ledger. Transient worker state, errors, current simulations, and undo snapshots are not persisted. Saved records can be replayed into the active table.
+
+`AuthProvider` uses Supabase Auth cookies refreshed through Next.js `proxy.ts`. `UserDataSync` merges local guest records into the first signed-in account, writes changes through the Supabase browser client, and clears account-backed data from the device on sign-out. The database stores ledger money as integer cents and training snapshots as JSONB. Both tables enforce `auth.uid() = user_id` for reads and writes.
+
+## Mobile interface
+
+The global shell is constrained to a phone-width reading column with safe-area-aware bottom navigation. Poker and blackjack pages expose one focused task panel at a time; summary strips keep the live recommendation, equity, pot, bet, and call values visible without duplicating their calculation logic. Card entry uses modal bottom sheets with 44px touch targets.
 
 ## Verification
 

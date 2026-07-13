@@ -20,9 +20,9 @@ const variants = {
 };
 
 const sizes = {
-  sm: "px-3 py-1.5 text-xs rounded-lg",
-  md: "px-4 py-2 text-sm rounded-xl",
-  lg: "px-6 py-3 text-base rounded-xl",
+  sm: "min-h-11 px-3 py-2 text-xs rounded-xl",
+  md: "min-h-11 px-4 py-2.5 text-sm rounded-xl",
+  lg: "min-h-12 px-6 py-3 text-base rounded-2xl",
 };
 
 export function Button({
@@ -36,7 +36,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
+        "inline-flex items-center justify-center gap-2 font-semibold transition-colors duration-150 active:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
         className

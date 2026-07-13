@@ -17,9 +17,9 @@ export function GlassCard({
   padding = "md",
 }: GlassCardProps) {
   const paddingClass = {
-    sm: "p-4",
-    md: "p-6",
-    lg: "p-8",
+    sm: "p-3.5 sm:p-4",
+    md: "p-4 sm:p-6",
+    lg: "p-5 sm:p-8",
   }[padding];
 
   return (
@@ -28,7 +28,7 @@ export function GlassCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "glass-panel rounded-2xl",
+        "glass-panel rounded-[1.25rem]",
         paddingClass,
         glow === "emerald" && "glow-emerald",
         glow === "gold" && "glow-gold",

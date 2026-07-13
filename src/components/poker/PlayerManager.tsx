@@ -60,7 +60,8 @@ export function PlayerManager() {
               {players.length > 2 && (
                 <button
                   onClick={() => removePlayer(player.id)}
-                  className="text-zinc-600 hover:text-red-400"
+                  aria-label={`Remove ${player.name}`}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-600 hover:text-red-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -69,12 +70,13 @@ export function PlayerManager() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[9px] text-zinc-600 uppercase">Stack</label>
+                <label className="text-[9px] text-zinc-600 uppercase">Stack ($)</label>
                 <input
                   aria-label={`Stack for ${player.name}`}
                   type="number"
                   min="0"
-                  step="1"
+                  step="0.01"
+                  inputMode="decimal"
                   value={player.stack}
                   onChange={(e) =>
                     setPlayerStack(player.id, parseFloat(e.target.value) || 0)
@@ -143,7 +145,7 @@ export function PlayerManager() {
               <button
                 onClick={() => setHero(player.id)}
                 aria-pressed={player.isHero}
-                className={`text-[9px] px-2 py-0.5 rounded ${
+                className={`min-h-11 rounded-xl px-3 text-[10px] ${
                   player.isHero
                     ? "bg-[#c9a84c]/20 text-[#c9a84c]"
                     : "bg-white/5 text-zinc-500 hover:text-zinc-300"
@@ -154,7 +156,7 @@ export function PlayerManager() {
               <button
                 onClick={() => setDealer(player.id)}
                 aria-pressed={player.isDealer}
-                className={`text-[9px] px-2 py-0.5 rounded ${
+                className={`min-h-11 rounded-xl px-3 text-[10px] ${
                   player.isDealer
                     ? "bg-white/20 text-zinc-200"
                     : "bg-white/5 text-zinc-500 hover:text-zinc-300"

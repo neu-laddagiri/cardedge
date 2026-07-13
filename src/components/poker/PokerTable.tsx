@@ -4,6 +4,7 @@ import { usePokerStore } from "@/store/pokerStore";
 import { PlayerSeat } from "./PlayerSeat";
 import { PlayingCard } from "@/components/ui/PlayingCard";
 import { motion } from "framer-motion";
+import { formatCurrency } from "@/lib/money";
 
 export function PokerTable() {
   const communityCards = usePokerStore((s) => s.communityCards);
@@ -21,14 +22,14 @@ export function PokerTable() {
   ];
 
   return (
-    <div className="relative h-[340px] w-full overflow-hidden rounded-[38%] border-4 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/80 to-emerald-950 shadow-inner glow-emerald sm:aspect-[16/10] sm:h-auto sm:max-h-[380px] sm:rounded-[50%]">
+    <div className="relative h-[300px] w-full overflow-hidden rounded-[2rem] border-2 border-[#c9a84c]/20 bg-gradient-to-b from-emerald-900/80 to-emerald-950 shadow-inner glow-emerald sm:aspect-[16/10] sm:h-auto sm:max-h-[380px] sm:rounded-[40%]">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08)_0%,transparent_70%)]" />
 
       {/* Player seats around the table */}
       {players.map((player, i) => {
         const angle = (i / players.length) * 2 * Math.PI - Math.PI / 2;
-        const radiusX = 42;
-        const radiusY = 38;
+        const radiusX = 40;
+        const radiusY = 41;
         const x = 50 + radiusX * Math.cos(angle);
         const y = 50 + radiusY * Math.sin(angle);
         return (
@@ -52,7 +53,7 @@ export function PokerTable() {
         >
           <div className="h-4 w-4 rounded-full bg-red-600 border border-red-400/50" />
           <span className="text-sm font-semibold text-[#c9a84c] tabular-nums">
-            Pot ${pot}
+            Pot {formatCurrency(pot)}
           </span>
         </motion.div>
 
@@ -62,7 +63,7 @@ export function PokerTable() {
               key={i}
               rank={card?.rank}
               suit={card?.suit}
-              size="sm"
+              size="xs"
               faceDown={!card && street !== "preflop"}
             />
           ))}

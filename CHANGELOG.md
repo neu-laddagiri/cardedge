@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-07-11
+
+- Rebuilt the application shell for phone-first use with a persistent bottom navigation and compact top bar.
+- Reorganized poker and blackjack into focused mobile tabs while retaining full odds, ranges, rules, and explanations.
+- Replaced inline card controls with touch-friendly bottom-sheet pickers.
+- Converted default poker stakes, stacks, bets, calls, and pots to dollar values with cent precision.
+- Added editable dollar bets for blackjack hands.
+- Added a dated game-session ledger with poker, blackjack, and combined profit/loss totals.
+- Added Supabase email accounts, password recovery, guest-to-account migration, and cross-device sync.
+- Added row-level-secured Postgres storage for financial sessions and saved training records.
+- Increased the test suite to 57 tests and added exact money and bankroll aggregation coverage.
+
 ## 0.2.0 — 2026-07-10
 
 - Replaced the passive poker action log with a validated betting-state engine.

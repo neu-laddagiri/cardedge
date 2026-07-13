@@ -6,6 +6,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatPill } from "@/components/ui/StatPill";
 import { calculatePotOdds } from "@/lib/poker/recommendations";
 import { getPotOddsFormula } from "@/lib/poker/pokerUtils";
+import { formatCurrency } from "@/lib/money";
 
 export function PotTracker() {
   const pot = usePokerStore((s) => s.pot);
@@ -21,24 +22,26 @@ export function PotTracker() {
       <SectionHeader title="Pot Tracker" subtitle="Auto-updated by actions; manual override available" />
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Pot before hero call</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Pot ($)</label>
           <input
             aria-label="Pot before hero call"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
+            inputMode="decimal"
             value={pot}
             onChange={(e) => setPot(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-lg font-semibold text-[#c9a84c] tabular-nums"
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 uppercase">Amount to Call</label>
+          <label className="text-[10px] text-zinc-500 uppercase">Call ($)</label>
           <input
             aria-label="Amount hero must call"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
+            inputMode="decimal"
             value={amountToCall}
             onChange={(e) => setAmountToCall(parseFloat(e.target.value) || 0)}
             className="w-full mt-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-lg font-semibold text-zinc-200 tabular-nums"
@@ -50,7 +53,7 @@ export function PotTracker() {
         <StatPill label="Pot Odds" value={`${potOdds.toFixed(1)}%`} variant="gold" />
         <StatPill
           label="Total Pot After Call"
-          value={`$${pot + amountToCall}`}
+          value={formatCurrency(pot + amountToCall)}
           variant="default"
         />
       </div>

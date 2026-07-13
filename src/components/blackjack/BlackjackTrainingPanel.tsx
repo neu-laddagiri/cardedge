@@ -21,7 +21,7 @@ export function BlackjackTrainingPanel() {
   return (
     <GlassCard>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <SectionHeader title="Training Progress" subtitle="Decision accuracy and locally saved sessions" />
+        <SectionHeader title="Training Progress" subtitle="Decision accuracy, saved locally and synced when signed in" />
         <div className="flex gap-2 text-xs">
           <span className="rounded-lg bg-white/5 px-3 py-1.5 text-zinc-400">{decisions.length} decisions</span>
           <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-emerald-300">
@@ -82,7 +82,7 @@ export function BlackjackTrainingPanel() {
                     type="button"
                     onClick={() => loadSavedSession(session.id)}
                     aria-label={`Replay session from ${new Date(session.savedAt).toLocaleString()}`}
-                    className="rounded-lg p-1 text-zinc-600 hover:text-emerald-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-600 hover:text-emerald-400"
                   >
                     <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -90,7 +90,7 @@ export function BlackjackTrainingPanel() {
                     type="button"
                     onClick={() => deleteSavedSession(session.id)}
                     aria-label={`Delete session from ${new Date(session.savedAt).toLocaleString()}`}
-                    className="rounded-lg p-1 text-zinc-600 hover:text-red-400"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-600 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>

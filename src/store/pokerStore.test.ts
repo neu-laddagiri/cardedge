@@ -15,7 +15,7 @@ describe("poker store integration", () => {
     usePokerStore.getState().addAction(villainId, "check");
     state = usePokerStore.getState();
     expect(state.street).toBe("flop");
-    expect(state.pot).toBe(40);
+    expect(state.pot).toBe(4);
 
     state.undoLastAction();
     state = usePokerStore.getState();
@@ -24,8 +24,8 @@ describe("poker store integration", () => {
 
     state.undoLastAction();
     state = usePokerStore.getState();
-    expect(state.pot).toBe(30);
-    expect(state.amountToCall).toBe(10);
+    expect(state.pot).toBe(3);
+    expect(state.amountToCall).toBe(1);
   });
 
   it("blocks seat changes after betting starts", () => {

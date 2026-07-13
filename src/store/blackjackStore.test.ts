@@ -40,4 +40,18 @@ describe("blackjack store integration", () => {
       correct: true,
     });
   });
+
+  it("tracks dollar bets to the cent before cards are dealt", () => {
+    const state = useBlackjackStore.getState();
+    state.setHandBet(state.activePlayerId!, state.activeHandId!, 37.255);
+    expect(useBlackjackStore.getState().players[0].hands[0].bet).toBe(37.26);
+
+    useBlackjackStore.getState().addCardToHand(
+      state.activePlayerId!,
+      state.activeHandId!,
+      aceOfSpades
+    );
+    useBlackjackStore.getState().setHandBet(state.activePlayerId!, state.activeHandId!, 100);
+    expect(useBlackjackStore.getState().players[0].hands[0].bet).toBe(37.26);
+  });
 });
