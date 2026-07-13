@@ -16,6 +16,12 @@ describe("blackjack store integration", () => {
     });
   });
 
+  it("starts new hands with a one-dollar bet", () => {
+    const state = useBlackjackStore.getState();
+    expect(state.defaultBet).toBe(1);
+    expect(state.players[0].hands[0].bet).toBe(1);
+  });
+
   it("enforces physical shoe limits", () => {
     const state = useBlackjackStore.getState();
     state.addDealerCard(aceOfSpades);
