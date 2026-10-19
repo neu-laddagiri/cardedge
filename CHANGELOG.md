@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added one-tap rank keypads (A, 2–10, J, Q, K) for the blackjack dealer and the active hand. The dealer upcard and two player cards now take three taps.
+- Suits are filled in automatically, rotating ♠♥♦♣ and skipping cards the configured shoe has used up. Ranks with no copies left are marked unavailable.
+- Replaced the Add to Hand, Hit, and Double buttons: a hand's first two cards are dealt, later cards are recorded as hits, and a Double toggle arms the next tap to double down when the table rules allow it.
+- Kept the bottom-sheet picker for entering an exact card; choosing one now plays it in a single step.
+- Improved card-entry accessibility with named keypads and keys, spoken card and total updates, focus that returns to the picker button, and card buttons no longer announced as toggles.
+
 ## 0.3.1 — 2026-07-12
 
 - Changed the default poker setup to a $20 buy-in with $0.25/$0.50 blinds.

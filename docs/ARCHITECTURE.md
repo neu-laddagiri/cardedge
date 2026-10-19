@@ -31,6 +31,8 @@ Core invariants:
 
 The store validates every added card against the configured shoe. An exact rank-and-suit card can appear once per physical deck. Actual hit, stand, double, split, and surrender actions are compared with the recommendation before the hand mutates.
 
+Card entry is rank-only. `quickEntry` gives each tapped rank a suit, rotating ♠♥♦♣ and skipping any rank-and-suit the shoe has used up, so the store's shoe check accepts it. The Cards tab then calls the existing store actions: `addDealerCard` for the dealer, `addCardToHand` for a hand's first two cards, `hitHand` for later cards, and `doubleHand` when Double is armed. The Double toggle uses the same availability rule the store enforces.
+
 ## Persistence
 
 Zustand's versioned persistence stores user preferences, saved training records, and the guest result ledger. Transient worker state, errors, current simulations, and undo snapshots are not persisted. Saved records can be replayed into the active table.
@@ -39,7 +41,7 @@ Zustand's versioned persistence stores user preferences, saved training records,
 
 ## Mobile interface
 
-The global shell is constrained to a phone-width reading column with safe-area-aware bottom navigation. Poker and blackjack pages expose one focused task panel at a time; summary strips keep the live recommendation, equity, pot, bet, and call values visible without duplicating their calculation logic. Card entry uses modal bottom sheets with 44px touch targets.
+The global shell is constrained to a phone-width reading column with safe-area-aware bottom navigation. Poker and blackjack pages expose one focused task panel at a time; summary strips keep the live recommendation, equity, pot, bet, and call values visible without duplicating their calculation logic. Blackjack cards are entered with one-tap rank keypads; poker cards, and exact blackjack cards, use modal bottom sheets. Both use 44px-tall touch targets.
 
 ## Verification
 
