@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added one-tap rank keypads (A, 2–10, J, Q, K) for the blackjack dealer and the active hand. The dealer upcard and two player cards now take three taps.
+- Suits are filled in automatically, rotating ♠♥♦♣ and skipping cards the configured shoe has used up. Ranks with no copies left are marked unavailable.
+- Replaced the Add to Hand, Hit, and Double buttons: a hand's first two cards are dealt, later cards are recorded as hits, and a Double toggle arms the next tap to double down when the table rules allow it.
+- Kept the bottom-sheet picker for entering an exact card; choosing one now plays it in a single step.
+- Improved card-entry accessibility with named keypads and keys, spoken card and total updates, focus that returns to the picker button, and card buttons no longer announced as toggles.
 - Fixed cloud sync deleting results and saved hands that another signed-in device had added. Deletions made on one device now stay deleted on the others, and accounts with more than 1,000 records load completely.
 - Rebuilt blackjack strategy on the Wizard of Odds charts for every deck count, H17/S17, and DAS setting. 0.3.1 gave a different move in 23 of the hand-versus-upcard cells under at least one setting. For example, with four or more decks and H17 it hit hard 17 against an ace instead of standing when surrender wasn't offered.
 - Split aces now take one card each and can't be resplit or doubled. Stand needs a live hand with two cards, and a split 21 no longer counts as blackjack.

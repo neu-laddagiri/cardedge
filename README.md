@@ -30,6 +30,7 @@ CardEdge is a mobile-first poker and blackjack decision trainer built with Next.
 - Physical shoe validation based on the configured deck count
 - Multiple players and up to four split hands per player
 - Editable dollar bets for active hands
+- One-tap rank keypads for the dealer and the active hand, with automatic shoe-aware suits and a Double toggle
 - Private sessions, replay, actual-versus-recommended accuracy, and optional account sync
 - Clear disclosure that payout affects return rather than the hit/stand matrix
 
