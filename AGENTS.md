@@ -32,7 +32,7 @@ src/app/               routes: / poker blackjack bankroll account login reset-pa
 src/components/        auth/ bankroll/ blackjack/ poker/ ui/ (+ layout shell)
 src/lib/               money (cents), bankroll, cloudSync, safeRedirect, supabase/
 src/lib/poker/         deck, ranges, monteCarlo, boardAnalysis, handState, recommendations, simulationClient, …
-src/lib/blackjack/     handValue, shoe, strategyCharts, basicStrategy, recommendations
+src/lib/blackjack/     handValue, shoe, strategyCharts, basicStrategy, recommendations, quickEntry
 src/store/             pokerStore, blackjackStore, bankrollStore, syncStatusStore
 src/workers/           pokerSimulation.worker.ts
 ```
@@ -45,6 +45,7 @@ Dollars are rounded to cents with `roundMoney` at every input and arithmetic bou
 
 ## Blackjack
 
+- Card entry is rank-only: `quickEntry` picks a suit the shoe still has, and the keypad's Double toggle uses `getHandPermissions`.
 - Strategy is chart-driven. `strategyCharts.ts` holds the Wizard of Odds total-dependent tables: hard and soft totals for 1, 2 and 4–8 decks × S17/H17, plus pairs × DAS/no-DAS. They assume a peeking dealer and late surrender. Codes: `H S P Dh Ds Rh Rs Rp`.
 - `basicStrategy.ts` resolves a code against what the hand may do and returns `preferredMove` when the chart's first choice isn't available. A pair that can't be split is played as its total.
 - `testdata/wizardOfOddsCharts.ts` is an independent golden copy of all 12 tables, and `strategyCharts.test.ts` checks every cell. A chart change must come from the source, https://wizardofodds.com/games/blackjack/strategy/calculator/, and update both files identically. The calculator renders its tables client-side, so read it in a browser rather than by fetching the page.
@@ -57,7 +58,10 @@ Dollars are rounded to cents with `roundMoney` at every input and arithmetic bou
 
 ## Poker
 
-- `handState.applyPokerAction` is the betting engine: it validates the action and returns reconciled stacks, commitments, pot, current bet, actor and street, or an error.
+- `handState.applyPokerAction` is the betting engine: it validates the action and returns reconciled stacks, commitments, pot, current bet and actor, or an error.
+- The board sets the street (`validation.streetForBoard`): all three flop cards, then the turn and river in order.
+  - A finished betting round never advances on its own. It waits with no actor until `setCommunityCard` adds the next card and calls `advancePokerStreet`; removing a card moves back the same way.
+  - Undo snapshots include the board, so undo can't leave a street the board doesn't show.
 - Ranges: `rangeThreshold(percent)` is calibrated against all 1,326 starting hands, so "22%" really samples the top 22%. `monteCarlo` deals each opponent from their range by rejection sampling, then falls back to an exhaustive pick. Each trial shuffles once and scores with `Hand.winners`, so ties split the pot.
 - Advice (`recommendations.ts`): pot odds = call / (pot + call). The value threshold is fair share + 25% of the rest (62.5% heads-up, 50% three-way). Opponents are counted from live players, not the hero. These are training heuristics, not solver output.
 - Simulations: `simulationClient` runs one worker at a time, cancels stale runs and caches identical inputs. `pokerStore` tags each run so an older result can never overwrite a newer one.

@@ -11,14 +11,14 @@
 
 ## Poker flow
 
-`pokerStore` owns the current UI state. Every recorded action is submitted to `handState.applyPokerAction`, which validates the action and returns a reconciled state containing stacks, commitments, pot, current bet, actor, and street. Invalid actions return an error without partially mutating state.
+`pokerStore` owns the current UI state. Every recorded action is submitted to `handState.applyPokerAction`, which validates the action and returns a reconciled state containing stacks, commitments, pot, current bet, and actor. Invalid actions return an error without partially mutating state. The board sets the street (`streetForBoard`). When a betting round finishes, the hand waits for the next card: no one is marked to act, and further actions are refused. Entering the card moves the street through `advancePokerStreet`, which clears that street's bets. Removing a card moves the street back the same way. Undo snapshots include the board, so undoing an earlier street's action also takes back the cards dealt after it.
 
 When cards, opponents, pot odds, or range inputs change, the store debounces a simulation request and numbers it, so only the newest run may publish results. `simulationClient` cancels obsolete workers (also when a cached result answers a newer request), caches identical inputs, and sends new work to `pokerSimulation.worker`. The worker runs the pure Monte Carlo engine. Each trial shuffles once, deals every opponent from a range calibrated against all 1,326 starting hands, and splits tied pots. The worker returns percentages plus range and uncertainty metadata. The recommendation module compares effective pot-share equity—not raw wins—with pot odds.
 
 Core invariants:
 
 - A physical poker card may appear only once.
-- Community cards must match the selected street with no gaps.
+- The street follows the board: all three flop cards make the flop, then the turn and the river in order.
 - Contributions never exceed a player's stack.
 - Checks are legal only with no outstanding call.
 - Bets open action; raises must exceed the outstanding call.

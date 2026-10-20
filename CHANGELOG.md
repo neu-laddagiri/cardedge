@@ -7,6 +7,10 @@
 - Replaced the Add to Hand, Hit, and Double buttons: a hand's first two cards are dealt, later cards are recorded as hits, and a Double toggle arms the next tap to double down when the table rules allow it.
 - Kept the bottom-sheet picker for entering an exact card; choosing one now plays it in a single step.
 - Improved card-entry accessibility with named keypads and keys, spoken card and total updates, focus that returns to the picker button, and card buttons no longer announced as toggles.
+- The poker street now follows the board cards. Completing the flop, then adding the turn and the river, moves it on; removing a card moves it back. Each change starts that street's betting over.
+- A finished poker betting round now waits for the next card instead of jumping to the next street. The street buttons became a read-only indicator with a prompt for the next card.
+- Undoing a poker action from an earlier street also takes back the board cards dealt after it.
+- Named each poker card slot for screen readers (for example "Flop 2: choose a card"); all seven used to be read as "Choose a card".
 - Fixed cloud sync deleting results and saved hands that another signed-in device had added. Deletions made on one device now stay deleted on the others, and accounts with more than 1,000 records load completely.
 - Rebuilt blackjack strategy on the Wizard of Odds charts for every deck count, H17/S17, and DAS setting. 0.3.1 gave a different move in 23 of the hand-versus-upcard cells under at least one setting. For example, with four or more decks and H17 it hit hard 17 against an ace instead of standing when surrender wasn't offered.
 - Split aces now take one card each and can't be resplit or doubled. Stand needs a live hand with two cards, and a split 21 no longer counts as blackjack.

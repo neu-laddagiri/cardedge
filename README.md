@@ -11,7 +11,7 @@ CardEdge is a mobile-first poker and blackjack decision trainer built with Next.
 - Visual table for 2–10 players with heads-up and multiway blind positioning
 - Legal-action validation for check, call, bet, raise, fold, and all-in
 - Automatic stack, street commitment, current-bet, pot, and amount-to-call reconciliation
-- Action order, betting-round completion, street advancement, and one-action undo
+- Action order, betting-round completion, streets set by the board cards, and one-action undo
 - Duplicate-card and street-layout validation
 - Cancellable Web Worker Monte Carlo simulations with Fast, Balanced, and Precise modes
 - Effective pot-share equity, split-pot accounting, 95% simulation interval, and pot odds

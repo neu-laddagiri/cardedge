@@ -6,7 +6,7 @@ import type {
   PokerGameState,
   Street,
 } from "./pokerTypes";
-import { sanitizeAmount } from "./validation";
+import { NEXT_STREET_CARDS, sanitizeAmount } from "./validation";
 import { formatCurrency, roundMoney } from "../money";
 
 export interface PokerEngineState {
@@ -54,6 +54,7 @@ export function applyPokerAction(
   if (player.status === "folded") return { ok: false, error: `${player.name} has already folded.` };
   if (player.status === "all-in") return { ok: false, error: `${player.name} is already all-in.` };
   if (state.handComplete) return { ok: false, error: "This hand is complete. Start a new hand to continue." };
+  if (bettingRoundComplete(state)) return { ok: false, error: streetCompleteMessage(state.street) };
   if (state.actingPlayerId && state.actingPlayerId !== player.id) {
     const actor = state.players.find((candidate) => candidate.id === state.actingPlayerId);
     return { ok: false, error: `It is ${actor?.name ?? "another player"}'s turn to act.` };
@@ -136,52 +137,63 @@ export function applyPokerAction(
     ? [player.id]
     : [...new Set([...state.actedPlayerIds, player.id])];
   const contenders = players.filter((candidate) => candidate.status !== "folded");
-  const actionable = contenders.filter((candidate) => candidate.status === "active" && candidate.stack > 0);
-  const settled = actionable.every((candidate) => candidate.streetCommitment === nextCurrentBet);
-  const roundComplete = settled && actionable.every((candidate) => actedPlayerIds.includes(candidate.id));
+  const roundComplete = bettingRoundComplete({ players, currentBet: nextCurrentBet, actedPlayerIds });
   const handComplete = contenders.length <= 1 || (state.street === "river" && roundComplete);
-  const nextStreet = roundComplete && !handComplete ? streetAfter(state.street) : state.street;
-  const streetAdvanced = nextStreet !== state.street;
-  const finalPlayers = streetAdvanced
-    ? players.map((candidate) => ({ ...candidate, streetCommitment: 0 }))
-    : players;
-  const actingPlayerId = handComplete
-    ? null
-    : streetAdvanced
-      ? firstActor(finalPlayers, nextStreet)
-      : nextActionablePlayer(players, player.id);
+  // A finished round waits for the next board card. Entering it moves the street on
+  // through advancePokerStreet, which resets the street's bets.
+  const actingPlayerId = handComplete || roundComplete ? null : nextActionablePlayer(players, player.id);
 
   return {
     ok: true,
     state: {
       ...state,
-      players: finalPlayers,
+      players,
       pot,
-      currentBet: streetAdvanced ? 0 : nextCurrentBet,
-      amountToCall: streetAdvanced ? 0 : amountToCall,
+      currentBet: nextCurrentBet,
+      amountToCall,
       actingPlayerId,
-      actedPlayerIds: streetAdvanced ? [] : actedPlayerIds,
+      actedPlayerIds,
       handComplete,
-      street: nextStreet,
       actions: [...state.actions, action],
     },
   };
 }
 
+/** Everyone who can still bet has acted and matched the bet, so this street's betting is over. */
+export function bettingRoundComplete(
+  state: Pick<PokerEngineState, "players" | "currentBet" | "actedPlayerIds">
+): boolean {
+  return state.players
+    .filter((player) => player.status === "active" && player.stack > 0)
+    .every((player) => player.streetCommitment === state.currentBet && state.actedPlayerIds.includes(player.id));
+}
+
+/** What the table waits for once a street's betting is over. */
+export function streetCompleteMessage(street: Street): string {
+  const next = NEXT_STREET_CARDS[street];
+  return next
+    ? `${street[0].toUpperCase()}${street.slice(1)} betting is complete. Add ${next} to continue.`
+    : "This hand is complete. Start a new hand to continue.";
+}
+
+/** Moves the hand to the street the board now shows, clearing that street's bets. */
 export function advancePokerStreet(
   state: PokerEngineState,
   street: Street
 ): PokerEngineState {
   const players = state.players.map((player) => ({ ...player, streetCommitment: 0 }));
+  // A hand everyone else folded stays over, and an all-in hand is over once the river is out.
+  const contenders = players.filter((player) => player.status !== "folded");
+  const actingPlayerId = contenders.length > 1 ? firstActor(players, street) : null;
   return {
     ...state,
     players,
     street,
     currentBet: 0,
     amountToCall: 0,
-    actingPlayerId: firstActor(players, street),
+    actingPlayerId,
     actedPlayerIds: [],
-    handComplete: false,
+    handComplete: contenders.length <= 1 || (street === "river" && actingPlayerId === null),
   };
 }
 
@@ -253,13 +265,6 @@ export function toEngineState(state: PokerGameState): PokerEngineState {
     street: state.street,
     actions: state.actions,
   };
-}
-
-function streetAfter(street: Street): Street {
-  if (street === "preflop") return "flop";
-  if (street === "flop") return "turn";
-  if (street === "turn") return "river";
-  return "river";
 }
 
 function nextActionablePlayer(players: Player[], currentId: string): string | null {
