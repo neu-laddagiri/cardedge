@@ -24,13 +24,7 @@ export function StreetControls() {
   const setSmallBlindAmount = usePokerStore((s) => s.setSmallBlindAmount);
   const setBigBlindAmount = usePokerStore((s) => s.setBigBlindAmount);
 
-  const state = usePokerStore.getState();
-  const usedCards = getUsedCards({
-    ...state,
-    players: state.players,
-    heroId: state.heroId,
-    actions: state.actions,
-  });
+  const usedCards = getUsedCards(heroCards, communityCards);
 
   return (
     <GlassCard padding="sm">

@@ -79,6 +79,35 @@ describe("poker hand state", () => {
     expect(allIn.ok && allIn.state.players[1].status).toBe("all-in");
   });
 
+  it("keeps money in whole cents so shoving the exact remaining stack is all-in", () => {
+    const base = {
+      players: [{ ...player("hero", 0), stack: 1 }, { ...player("villain", 1), stack: 5 }],
+      heroId: "hero",
+      pot: 0,
+      currentBet: 0,
+      amountToCall: 0,
+      actingPlayerId: "hero",
+      actedPlayerIds: [],
+      handComplete: false,
+      street: "flop" as const,
+      actions: [],
+    };
+    // In floating point 1 - 0.7 is 0.30000000000000004.
+    const bet = applyPokerAction(base, { id: "b1", playerId: "hero", type: "bet", amount: 0.7 });
+    if (!bet.ok) throw new Error(bet.error);
+    const call = applyPokerAction(bet.state, { id: "b2", playerId: "villain", type: "call" });
+    if (!call.ok) throw new Error(call.error);
+    expect(call.state.street).toBe("turn");
+    expect(call.state.players[0].stack).toBe(0.3);
+
+    const check = applyPokerAction(call.state, { id: "b3", playerId: "villain", type: "check" });
+    if (!check.ok) throw new Error(check.error);
+    const shove = applyPokerAction(check.state, { id: "b4", playerId: "hero", type: "bet", amount: 0.3 });
+    if (!shove.ok) throw new Error(shove.error);
+    expect(shove.state.players[0]).toMatchObject({ stack: 0, status: "all-in" });
+    expect(shove.state.pot).toBe(1.7);
+  });
+
   it("rejects missing, folded, and empty-stack actors", () => {
     const base = {
       players: [{ ...player("hero", 0), status: "folded" as const }, { ...player("villain", 1), stack: 0 }],

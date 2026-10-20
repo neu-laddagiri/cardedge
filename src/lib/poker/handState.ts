@@ -7,7 +7,7 @@ import type {
   Street,
 } from "./pokerTypes";
 import { sanitizeAmount } from "./validation";
-import { formatCurrency } from "../money";
+import { formatCurrency, roundMoney } from "../money";
 
 export interface PokerEngineState {
   players: Player[];
@@ -42,7 +42,7 @@ function heroCallAmount(
 ): number {
   const hero = players.find((player) => player.id === heroId);
   if (!hero || hero.status === "folded") return 0;
-  return Math.max(0, Math.min(hero.stack, currentBet - hero.streetCommitment));
+  return roundMoney(Math.max(0, Math.min(hero.stack, currentBet - hero.streetCommitment)));
 }
 
 export function applyPokerAction(
@@ -59,7 +59,9 @@ export function applyPokerAction(
     return { ok: false, error: `It is ${actor?.name ?? "another player"}'s turn to act.` };
   }
 
-  const callAmount = Math.max(0, state.currentBet - player.streetCommitment);
+  // Every amount is kept in whole cents: raw float sums (1 - 0.7) would leave
+  // fractions of a cent behind and break all-in and "settled" checks.
+  const callAmount = roundMoney(Math.max(0, state.currentBet - player.streetCommitment));
   let contribution = 0;
   let status: PlayerStatus = player.status;
   let nextCurrentBet = state.currentBet;
@@ -82,7 +84,7 @@ export function applyPokerAction(
       if (state.currentBet > 0) return { ok: false, error: "Use raise when a bet already exists." };
       contribution = sanitizeAmount(input.amount ?? 0, player.stack);
       if (contribution <= 0) return { ok: false, error: "Enter a positive bet amount." };
-      nextCurrentBet = player.streetCommitment + contribution;
+      nextCurrentBet = roundMoney(player.streetCommitment + contribution);
       if (contribution === player.stack) status = "all-in";
       break;
     }
@@ -92,7 +94,7 @@ export function applyPokerAction(
       if (contribution <= callAmount) {
         return { ok: false, error: `A raise must add more than the ${formatCurrency(callAmount)} call.` };
       }
-      nextCurrentBet = player.streetCommitment + contribution;
+      nextCurrentBet = roundMoney(player.streetCommitment + contribution);
       if (contribution === player.stack) status = "all-in";
       break;
     }
@@ -100,7 +102,7 @@ export function applyPokerAction(
       if (player.stack <= 0) return { ok: false, error: `${player.name} has no money remaining.` };
       contribution = player.stack;
       status = "all-in";
-      nextCurrentBet = Math.max(nextCurrentBet, player.streetCommitment + contribution);
+      nextCurrentBet = Math.max(nextCurrentBet, roundMoney(player.streetCommitment + contribution));
       break;
   }
 
@@ -109,13 +111,13 @@ export function applyPokerAction(
       ? {
           ...candidate,
           status,
-          stack: candidate.stack - contribution,
-          streetCommitment: candidate.streetCommitment + contribution,
-          totalCommitted: candidate.totalCommitted + contribution,
+          stack: roundMoney(candidate.stack - contribution),
+          streetCommitment: roundMoney(candidate.streetCommitment + contribution),
+          totalCommitted: roundMoney(candidate.totalCommitted + contribution),
         }
       : candidate
   );
-  const pot = state.pot + contribution;
+  const pot = roundMoney(state.pot + contribution);
   const amountToCall = heroCallAmount(players, state.heroId, nextCurrentBet);
   const action: PokerAction = {
     id: input.id,
@@ -205,7 +207,7 @@ export function postBlinds(
     const contribution = Math.min(player.stack, requested);
     return {
       ...player,
-      stack: player.stack - contribution,
+      stack: roundMoney(player.stack - contribution),
       streetCommitment: contribution,
       totalCommitted: contribution,
       status: contribution > 0 && contribution === player.stack ? ("all-in" as const) : player.status,
@@ -214,7 +216,7 @@ export function postBlinds(
   const currentBet = Math.max(0, ...posted.map((player) => player.streetCommitment));
   return {
     players: posted,
-    pot: posted.reduce((sum, player) => sum + player.streetCommitment, 0),
+    pot: roundMoney(posted.reduce((sum, player) => sum + player.streetCommitment, 0)),
     currentBet,
     amountToCall: heroCallAmount(posted, heroId, currentBet),
     actingPlayerId: firstActor(posted, "preflop"),

@@ -51,10 +51,14 @@ export function BankrollDashboard() {
   const deleteSession = useBankrollStore((state) => state.deleteSession);
   const { user } = useAuth();
   const syncStatus = useSyncStatusStore((state) => state.status);
-  const [formOpen, setFormOpen] = useState(sessions.length === 0);
+  // Until the user opens or closes the form, show it only when there are no results yet. A fixed
+  // initial state would be decided before saved sessions load and stay open for returning users.
+  const [formChoice, setFormOpen] = useState<boolean | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<SessionFormState>(emptyForm);
+  const formStarted = Boolean(form.buyIn || form.cashOut || form.note);
+  const formOpen = formChoice ?? (sessions.length === 0 || formStarted);
   const summary = useMemo(() => summarizeBankroll(sessions), [sessions]);
   const previewNet = toCents(Number(form.cashOut || 0)) - toCents(Number(form.buyIn || 0));
 
@@ -119,7 +123,7 @@ export function BankrollDashboard() {
       </div>
 
       {formOpen && (
-        <form onSubmit={submit} className="mobile-card space-y-4 p-4">
+        <form onSubmit={submit} aria-label={editingId ? "Edit session" : "New session"} className="mobile-card space-y-4 p-4">
           <div>
             <p className="eyebrow">{editingId ? "Edit session" : "New session"}</p>
             <h2 className="mt-1 text-lg font-semibold text-zinc-100">What did you finish with?</h2>

@@ -125,6 +125,8 @@ export interface PokerRecommendation {
 }
 
 export interface OpponentThreat {
+  /** Stable, unique key; player names can repeat. */
+  id: string;
   category: string;
   likelihood: "low" | "medium" | "high";
   description: string;

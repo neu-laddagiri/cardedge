@@ -41,6 +41,11 @@ export function cardsEqual(a: Card, b: Card): boolean {
   return a.rank === b.rank && a.suit === b.suit;
 }
 
+/** 2–14, with the ace high. */
+export function rankValue(rank: Rank): number {
+  return RANKS.indexOf(rank) + 2;
+}
+
 export function removeKnownCards(deck: Card[], known: Card[]): Card[] {
   return deck.filter(
     (card) => !known.some((knownCard) => cardsEqual(card, knownCard))

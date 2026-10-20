@@ -100,9 +100,9 @@ npm run build
 
 Poker simulations remove all visible cards, sample opponent holdings from configured range profiles, complete the board, and compare final hands. Effective equity counts wins plus the hero's fractional share of tied pots. Recommendations compare that equity interval with the break-even pot-odds threshold, then apply documented training heuristics for calls and value raises.
 
-Opponent range percentages are intentionally understandable approximations rather than GTO solver outputs. Style and action presets influence which starting hands are sampled; users can override the percentage for each opponent.
+Opponent range percentages are intentionally understandable approximations rather than GTO solver outputs: a 20% range samples the strongest fifth of all 1,326 starting hands by a simple strength heuristic. Style and action presets influence which starting hands are sampled; users can override the percentage for each opponent.
 
-Blackjack decisions use explicit hard-total, soft-total, pair, and surrender rules. Deck count, H17/S17, DAS, and surrender availability affect the matrix. Blackjack payout is displayed as return information because it does not change ordinary basic-strategy hit/stand decisions.
+Blackjack decisions follow the Wizard of Odds total-dependent basic-strategy charts for one, two, and four to eight decks, with separate tables for H17/S17 and for pairs with and without double after split. When surrender isn't offered, each chart's fallback move applies. Blackjack payout is displayed as return information because it does not change ordinary basic-strategy hit/stand decisions.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for implementation details and invariants.
 

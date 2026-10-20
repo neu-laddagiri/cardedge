@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useBlackjackStore } from "@/store/blackjackStore";
+import { getHandPermissions, useBlackjackStore } from "@/store/blackjackStore";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,6 @@ import { BlackjackCardPicker } from "./BlackjackCardPicker";
 import { UserPlus, Trash2, Plus, Split } from "lucide-react";
 import type { BJCard } from "@/lib/blackjack/blackjackTypes";
 import { InlineAlert } from "@/components/ui/InlineAlert";
-import { isPair } from "@/lib/blackjack/handValue";
 import { BlackjackHandDisplay } from "./BlackjackHand";
 
 export function BlackjackPlayerManager() {
@@ -53,10 +52,10 @@ export function BlackjackPlayerManager() {
 
   const activePlayer = players.find((player) => player.id === activePlayerId);
   const activeHand = activePlayer?.hands.find((hand) => hand.id === activeHandId);
-  const handIsActive = activeHand?.status === "active";
-  const canSplit = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && isPair(activeHand.cards) && (activePlayer?.hands.length ?? 0) < 4);
-  const canDouble = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && (!activeHand.isSplit || rules.doubleAfterSplit));
-  const canSurrender = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && !activeHand.isSplit && rules.surrenderAllowed);
+  const { canHit: handIsActive, canStand, canSplit, canDouble, canSurrender } =
+    activePlayer && activeHand
+      ? getHandPermissions(activeHand, activePlayer, rules)
+      : { canHit: false, canStand: false, canSplit: false, canDouble: false, canSurrender: false };
 
   const handleDouble = () => {
     if (!pendingCard || !activePlayerId || !activeHandId) return;
@@ -99,7 +98,7 @@ export function BlackjackPlayerManager() {
       <GlassCard padding="sm">
         <div className="flex items-center justify-between mb-4">
           <SectionHeader title="Your Hands" subtitle="Tap a hand to make it active" />
-          <Button size="sm" variant="secondary" onClick={addPlayer}>
+          <Button size="sm" variant="secondary" onClick={addPlayer} aria-label="Add player" title="Add player">
             <UserPlus className="h-3 w-3" />
           </Button>
         </div>
@@ -191,7 +190,7 @@ export function BlackjackPlayerManager() {
               activeHandId &&
               standHand(activePlayerId, activeHandId)
             }
-            disabled={!handIsActive}
+            disabled={!canStand}
           >
             Stand
           </Button>

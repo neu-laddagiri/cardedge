@@ -36,4 +36,28 @@ describe("poker recommendations", () => {
   it("calls a clear but non-raising advantage", () => {
     expect(recommendPokerAction(43, 33.3, state, 2).action).toBe("call");
   });
+
+  it("does not raise for value with weak heads-up equity against a small bet", () => {
+    // A $10 call into $100 needs 9.1%, but 30% heads-up is far behind.
+    const smallBet = { ...state, pot: 100, amountToCall: 10, currentBet: 10 };
+    expect(recommendPokerAction(30, calculatePotOdds(10, 100), smallBet, 1).action).toBe("call");
+  });
+
+  it("scales the value bar with the number of opponents", () => {
+    const opponent = (id: string) => ({
+      id, name: id, stack: 100, position: 0, isHero: false, isDealer: false,
+      isSmallBlind: false, isBigBlind: false, status: "active" as const,
+      style: "unknown" as const, streetCommitment: 0, totalCommitted: 0,
+    });
+    const fourWay: PokerGameState = {
+      ...state,
+      heroId: "hero",
+      players: [{ ...opponent("hero"), isHero: true }, opponent("a"), opponent("b"), opponent("c"), opponent("d")],
+      amountToCall: 0,
+      currentBet: 0,
+    };
+    // 45% against four opponents is more than double a fair 20% share.
+    expect(recommendPokerAction(45, 0, fourWay, 1).action).toBe("bet");
+    expect(recommendPokerAction(45, 0, { ...fourWay, players: fourWay.players.slice(0, 2) }, 1).action).toBe("check");
+  });
 });

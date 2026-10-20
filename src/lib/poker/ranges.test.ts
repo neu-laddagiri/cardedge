@@ -18,6 +18,21 @@ describe("opponent ranges", () => {
     expect(handFitsRange(trash, 100)).toBe(true);
   });
 
+  it("makes a labelled range cover that share of all starting hands", () => {
+    const suits: Card["suit"][] = ["clubs", "diamonds", "hearts", "spades"];
+    const deck = [..."23456789TJQKA"].flatMap((rank) => suits.map((suit) => card(rank as Card["rank"], suit)));
+    const combos: [Card, Card][] = [];
+    for (let i = 0; i < deck.length; i++) {
+      for (let j = i + 1; j < deck.length; j++) combos.push([deck[i], deck[j]]);
+    }
+    for (const percent of [5, 12, 22, 38, 40, 58, 80]) {
+      const share = (combos.filter((hand) => handFitsRange(hand, percent)).length / combos.length) * 100;
+      // Hands tied at the cut-off are all included, so allow a small overshoot.
+      expect(share).toBeGreaterThanOrEqual(percent);
+      expect(share).toBeLessThan(percent + 3);
+    }
+  });
+
   it("narrows a range after aggression and removes folded players", () => {
     const players = [player("hero", "unknown"), player("tight", "tight"), { ...player("folded", "loose"), status: "folded" as const }];
     const actions: PokerAction[] = [{

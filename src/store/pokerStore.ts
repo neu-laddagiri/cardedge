@@ -37,6 +37,8 @@ import {
 let playerIdCounter = 1;
 let actionIdCounter = 1;
 let simulationTimer: ReturnType<typeof setTimeout> | null = null;
+/** Bumped by every simulation request; only the newest one may publish results. */
+let simulationRun = 0;
 
 const SIMULATION_COUNTS: Record<SimulationPrecision, number> = {
   fast: 800,
@@ -417,6 +419,7 @@ export const usePokerStore = create<PokerStore>()(
         simulationTimer = setTimeout(() => void get().runSimulation(), 180);
       },
       runSimulation: async () => {
+        const run = ++simulationRun;
         const state = get();
         const [first, second] = state.heroCards;
         const community = getCommunityCardArray(state.communityCards);
@@ -433,7 +436,10 @@ export const usePokerStore = create<PokerStore>()(
           set({ oddsResult: null, recommendation: null, isSimulating: false, lastError: validationError });
           return;
         }
-        if (!state.heroId) return;
+        if (!state.heroId) {
+          set({ oddsResult: null, recommendation: null, isSimulating: false });
+          return;
+        }
         const opponents = buildOpponentProfiles(state.players, state.heroId, state.actions);
         if (opponents.length === 0) {
           set({ oddsResult: null, recommendation: null, isSimulating: false, lastError: "At least one active opponent is required." });
@@ -447,6 +453,7 @@ export const usePokerStore = create<PokerStore>()(
             opponents,
             simulations: state.simulationCount,
           });
+          if (run !== simulationRun) return; // the inputs changed while this ran
           const fresh = get();
           set({
             oddsResult: result,
@@ -454,7 +461,7 @@ export const usePokerStore = create<PokerStore>()(
             isSimulating: false,
           });
         } catch (error) {
-          if (error instanceof SimulationCancelledError) return;
+          if (error instanceof SimulationCancelledError || run !== simulationRun) return;
           set({
             isSimulating: false,
             lastError: error instanceof Error ? error.message : "Simulation failed.",

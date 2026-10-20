@@ -13,7 +13,7 @@
 
 `pokerStore` owns the current UI state. Every recorded action is submitted to `handState.applyPokerAction`, which validates the action and returns a reconciled state containing stacks, commitments, pot, current bet, actor, and street. Invalid actions return an error without partially mutating state.
 
-When cards, opponents, pot odds, or range inputs change, the store debounces a simulation request. `simulationClient` cancels obsolete workers, caches identical inputs, and sends new work to `pokerSimulation.worker`. The worker runs the pure Monte Carlo engine and returns percentages plus range and uncertainty metadata. The recommendation module compares effective pot-share equity—not raw wins—with pot odds.
+When cards, opponents, pot odds, or range inputs change, the store debounces a simulation request and numbers it, so only the newest run may publish results. `simulationClient` cancels obsolete workers (also when a cached result answers a newer request), caches identical inputs, and sends new work to `pokerSimulation.worker`. The worker runs the pure Monte Carlo engine. Each trial shuffles once, deals every opponent from a range calibrated against all 1,326 starting hands, and splits tied pots. The worker returns percentages plus range and uncertainty metadata. The recommendation module compares effective pot-share equity—not raw wins—with pot odds.
 
 Core invariants:
 
@@ -27,7 +27,7 @@ Core invariants:
 
 ## Blackjack flow
 
-`blackjackStore` owns table rules, hands, the dealer upcard, training decisions, and saved sessions. `basicStrategy` selects an ideal rule-aware move; if that move is unavailable, it returns an explicit legal fallback. `recommendations` turns that decision into user-facing reasoning without recalculating strategy.
+`blackjackStore` owns table rules, hands, the dealer upcard, training decisions, and saved sessions. `basicStrategy` looks up the Wizard of Odds total-dependent chart for the deck count, H17/S17, and DAS (`strategyCharts`) and resolves it against what the hand may do; if the chart's move is unavailable, it returns an explicit legal fallback. `getHandPermissions` defines what a hand may do, and the store actions enforce it. Split aces take one card each and can't be resplit or doubled, and surrender applies only to the original two cards. `recommendations` turns that decision into user-facing reasoning without recalculating strategy.
 
 The store validates every added card against the configured shoe. An exact rank-and-suit card can appear once per physical deck. Actual hit, stand, double, split, and surrender actions are compared with the recommendation before the hand mutates.
 
@@ -35,7 +35,7 @@ The store validates every added card against the configured shoe. An exact rank-
 
 Zustand's versioned persistence stores user preferences, saved training records, and the guest result ledger. Transient worker state, errors, current simulations, and undo snapshots are not persisted. Saved records can be replayed into the active table.
 
-`AuthProvider` uses Supabase Auth cookies refreshed through Next.js `proxy.ts`. `UserDataSync` merges local guest records into the first signed-in account, writes changes through the Supabase browser client, and clears account-backed data from the device on sign-out. The database stores ledger money as integer cents and training snapshots as JSONB. Both tables enforce `auth.uid() = user_id` for reads and writes.
+`AuthProvider` uses Supabase Auth cookies refreshed through Next.js `proxy.ts`; `/auth/callback` redirects only to same-site paths (`safeNextPath`). `UserDataSync` merges local guest records into the signed-in account, writes changes through the Supabase browser client, and clears account-backed data from the device on sign-out. Each device remembers which record ids it has seen on the server (`cloudSync`). A sync uploads only new or edited records and deletes only records removed on this device. It never deletes records another device added, and it drops local copies of records another device deleted. The database stores ledger money as integer cents and training snapshots as JSONB. Both tables enforce `auth.uid() = user_id` for reads and writes.
 
 ## Mobile interface
 
@@ -43,4 +43,4 @@ The global shell is constrained to a phone-width reading column with safe-area-a
 
 ## Verification
 
-Vitest covers deterministic simulation behavior, pot odds, action legality, stack reconciliation, range weighting, card validation, blackjack totals, shoe constraints, and representative rule-matrix decisions. CI enforces zero lint warnings, TypeScript correctness, coverage thresholds, and a full Next.js production build.
+Vitest covers deterministic simulation behavior and known equities, pot odds, action legality, stack reconciliation, cent-exact chip math, range calibration, card validation, blackjack totals, shoe constraints, every cell of the twelve blackjack strategy charts, cloud-sync reconciliation against an in-memory Supabase, and redirect validation. CI enforces zero lint warnings, TypeScript correctness, coverage thresholds, and a full Next.js production build.
