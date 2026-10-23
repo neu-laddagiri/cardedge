@@ -78,8 +78,38 @@ export function estimateStartingHandStrength(cards: [Card, Card]): number {
   return Math.max(0, Math.min(1, score / 1.55));
 }
 
+let sortedComboStrengths: number[] | null = null;
+
+/** Strength of every one of the 1,326 starting hands, strongest first. */
+function comboStrengths(): number[] {
+  if (sortedComboStrengths) return sortedComboStrengths;
+  const suits: Card["suit"][] = ["clubs", "diamonds", "hearts", "spades"];
+  const deck: Card[] = [..."23456789TJQKA"].flatMap((rank) =>
+    suits.map((suit) => ({ rank: rank as Card["rank"], suit }))
+  );
+  const strengths: number[] = [];
+  for (let first = 0; first < deck.length; first++) {
+    for (let second = first + 1; second < deck.length; second++) {
+      strengths.push(estimateStartingHandStrength([deck[first], deck[second]]));
+    }
+  }
+  sortedComboStrengths = strengths.sort((a, b) => b - a);
+  return sortedComboStrengths;
+}
+
+/**
+ * Minimum strength for a hand to be in the top `rangePercent` of all starting
+ * hands, so a "22% range" really is the strongest 22% of combos (hands tied
+ * at the cut-off are all included).
+ */
+export function rangeThreshold(rangePercent: number): number {
+  if (rangePercent >= 100) return Number.NEGATIVE_INFINITY;
+  const strengths = comboStrengths();
+  const count = Math.max(1, Math.ceil((Math.max(0, rangePercent) / 100) * strengths.length));
+  return strengths[count - 1];
+}
+
 export function handFitsRange(cards: [Card, Card], rangePercent: number): boolean {
   if (rangePercent >= 100) return true;
-  const threshold = 0.92 - (rangePercent / 100) * 0.9;
-  return estimateStartingHandStrength(cards) >= threshold;
+  return estimateStartingHandStrength(cards) >= rangeThreshold(rangePercent);
 }

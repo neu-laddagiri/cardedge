@@ -30,6 +30,7 @@ import {
 } from "@/lib/poker/simulationClient";
 import {
   sanitizeAmount,
+  streetForBoard,
   validateCommunityLayout,
   validatePokerCards,
 } from "@/lib/poker/validation";
@@ -37,6 +38,8 @@ import {
 let playerIdCounter = 1;
 let actionIdCounter = 1;
 let simulationTimer: ReturnType<typeof setTimeout> | null = null;
+/** Bumped by every simulation request; only the newest one may publish results. */
+let simulationRun = 0;
 
 const SIMULATION_COUNTS: Record<SimulationPrecision, number> = {
   fast: 800,
@@ -48,7 +51,11 @@ const DEFAULT_BUY_IN = 20;
 const DEFAULT_SMALL_BLIND = 0.25;
 const DEFAULT_BIG_BLIND = 0.5;
 
-type PokerSnapshot = PokerEngineState;
+/**
+ * Undo restores the board too: undoing an action from an earlier street takes back the cards
+ * dealt after it, so the street (which follows the board) and the betting stay in step.
+ */
+type PokerSnapshot = PokerEngineState & Pick<PokerStore, "communityCards">;
 
 function createPlayer(name: string, stack: number, position: number): Player {
   return {
@@ -146,7 +153,6 @@ interface PokerStore {
   setBigBlindAmount: (amount: number) => void;
   setPot: (amount: number) => void;
   setAmountToCall: (amount: number) => void;
-  setStreet: (street: Street) => void;
   setHeroCard: (index: 0 | 1, card: Card | null) => void;
   setCommunityCard: (key: keyof PokerStore["communityCards"], card: Card | null) => void;
   addAction: (playerId: string, type: ActionType, amount?: number) => void;
@@ -163,7 +169,7 @@ interface PokerStore {
   resetGame: () => void;
 }
 
-function engineSnapshot(state: PokerStore): PokerSnapshot {
+function engineSnapshot(state: PokerStore): PokerEngineState {
   return {
     players: state.players,
     heroId: state.heroId,
@@ -176,6 +182,10 @@ function engineSnapshot(state: PokerStore): PokerSnapshot {
     street: state.street,
     actions: state.actions,
   };
+}
+
+function undoSnapshot(state: PokerStore): PokerSnapshot {
+  return { ...engineSnapshot(state), communityCards: state.communityCards };
 }
 
 function recommendationState(state: PokerStore) {
@@ -346,10 +356,6 @@ export const usePokerStore = create<PokerStore>()(
         set({ amountToCall: sanitizeAmount(amount) });
         get().queueSimulation();
       },
-      setStreet: (street) => {
-        set((state) => ({ ...advancePokerStreet(engineSnapshot(state), street), lastError: null }));
-        get().queueSimulation();
-      },
       setHeroCard: (index, card) => {
         set((state) => {
           const heroCards = [...state.heroCards] as [Card | null, Card | null];
@@ -359,7 +365,15 @@ export const usePokerStore = create<PokerStore>()(
         get().queueSimulation();
       },
       setCommunityCard: (key, card) => {
-        set((state) => ({ communityCards: { ...state.communityCards, [key]: card }, lastError: null }));
+        set((state) => {
+          const communityCards = { ...state.communityCards, [key]: card };
+          // The board sets the street: completing the flop, turn or river moves it on, and
+          // removing a card moves it back. Either way that street's bets start over.
+          const street = streetForBoard(communityCards);
+          return street === state.street
+            ? { communityCards, lastError: null }
+            : { ...advancePokerStreet(engineSnapshot(state), street), communityCards, lastError: null };
+        });
         get().queueSimulation();
       },
 
@@ -379,7 +393,7 @@ export const usePokerStore = create<PokerStore>()(
         }
         set({
           ...result.state,
-          undoStack: [...state.undoStack, engineSnapshot(state)].slice(-30),
+          undoStack: [...state.undoStack, undoSnapshot(state)].slice(-30),
           lastError: null,
         });
         get().queueSimulation();
@@ -417,6 +431,7 @@ export const usePokerStore = create<PokerStore>()(
         simulationTimer = setTimeout(() => void get().runSimulation(), 180);
       },
       runSimulation: async () => {
+        const run = ++simulationRun;
         const state = get();
         const [first, second] = state.heroCards;
         const community = getCommunityCardArray(state.communityCards);
@@ -433,7 +448,10 @@ export const usePokerStore = create<PokerStore>()(
           set({ oddsResult: null, recommendation: null, isSimulating: false, lastError: validationError });
           return;
         }
-        if (!state.heroId) return;
+        if (!state.heroId) {
+          set({ oddsResult: null, recommendation: null, isSimulating: false });
+          return;
+        }
         const opponents = buildOpponentProfiles(state.players, state.heroId, state.actions);
         if (opponents.length === 0) {
           set({ oddsResult: null, recommendation: null, isSimulating: false, lastError: "At least one active opponent is required." });
@@ -447,6 +465,7 @@ export const usePokerStore = create<PokerStore>()(
             opponents,
             simulations: state.simulationCount,
           });
+          if (run !== simulationRun) return; // the inputs changed while this ran
           const fresh = get();
           set({
             oddsResult: result,
@@ -454,7 +473,7 @@ export const usePokerStore = create<PokerStore>()(
             isSimulating: false,
           });
         } catch (error) {
-          if (error instanceof SimulationCancelledError) return;
+          if (error instanceof SimulationCancelledError || run !== simulationRun) return;
           set({
             isSimulating: false,
             lastError: error instanceof Error ? error.message : "Simulation failed.",

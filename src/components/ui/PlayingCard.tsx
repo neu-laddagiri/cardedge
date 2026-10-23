@@ -11,8 +11,11 @@ interface PlayingCardProps {
   suit?: Suit | null;
   size?: "xs" | "sm" | "md" | "lg";
   faceDown?: boolean;
+  /** Makes a clickable card a toggle. Leave unset for a plain card button. */
   selected?: boolean;
   onClick?: () => void;
+  /** Overrides the default accessible name of a clickable card. */
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -35,8 +38,9 @@ export function PlayingCard({
   suit,
   size = "md",
   faceDown = false,
-  selected = false,
+  selected,
   onClick,
+  ariaLabel,
   className,
 }: PlayingCardProps) {
   const isRed = suit === "hearts" || suit === "diamonds";
@@ -52,7 +56,7 @@ export function PlayingCard({
           type="button"
           whileHover={{ y: -2 }}
           onClick={onClick}
-          aria-label={faceDown ? "Face-down card" : "Choose a card"}
+          aria-label={ariaLabel ?? (faceDown ? "Face-down card" : "Choose a card")}
           aria-pressed={selected}
           className={cn(
             sizes[size],
@@ -95,7 +99,7 @@ export function PlayingCard({
         type="button"
         whileHover={{ y: -4, rotate: -2 }}
         onClick={onClick}
-        aria-label={`${cardLabel}; choose a different card`}
+        aria-label={ariaLabel ?? `${cardLabel}; choose a different card`}
         aria-pressed={selected}
         className={cn(
           sizes[size],

@@ -48,13 +48,21 @@ export function PokerCardPicker({ selected, usedCards, onSelect, label }: PokerC
   };
   const isUsed = (rank: Rank, suit: Suit) => usedCards.some((card) => cardsEqual(card, { rank, suit }));
   const invalid = Boolean(pickRank && pickSuit && isUsed(pickRank, pickSuit));
+  // Seven pickers share this screen, so each button names its own slot.
+  const cardButtonLabel = label
+    ? selected ? `${label}: ${selected.rank} of ${selected.suit}. Change card` : `${label}: choose a card`
+    : undefined;
 
   return (
     <div>
       {label && <span className="mb-1.5 block text-[11px] text-zinc-500">{label}</span>}
       <div className="flex items-center gap-2">
-        <PlayingCard rank={selected?.rank} suit={selected?.suit} size="sm" onClick={openPicker} />
-        {selected && <button type="button" onClick={() => onSelect(null)} className="min-h-11 px-1 text-xs text-zinc-500">Clear</button>}
+        <PlayingCard rank={selected?.rank} suit={selected?.suit} size="sm" onClick={openPicker} ariaLabel={cardButtonLabel} />
+        {selected && (
+          <button type="button" onClick={() => onSelect(null)} aria-label={label ? `Clear ${label}` : undefined} className="min-h-11 px-1 text-xs text-zinc-500">
+            Clear
+          </button>
+        )}
       </div>
 
       <AnimatePresence>

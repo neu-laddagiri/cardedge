@@ -204,7 +204,7 @@ export function PokerOddsPanel() {
         <div className="space-y-2">
           {threats.map((threat) => (
             <div
-              key={threat.category}
+              key={threat.id}
               className="rounded-lg bg-white/3 px-3 py-2"
             >
               <div className="flex items-center justify-between mb-0.5">

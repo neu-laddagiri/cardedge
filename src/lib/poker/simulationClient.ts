@@ -23,6 +23,8 @@ export function runPokerSimulation(
 ): Promise<PokerOddsResult | null> {
   const cacheKey = JSON.stringify(input);
   if (resultCache.has(cacheKey)) {
+    // A slower run for older inputs must not finish later and overwrite this.
+    cancelPokerSimulation();
     return Promise.resolve(resultCache.get(cacheKey) ?? null);
   }
   const id = ++requestId;

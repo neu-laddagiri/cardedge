@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { BJCard, BJRank, BJSuit } from "@/lib/blackjack/blackjackTypes";
@@ -12,17 +12,21 @@ interface BlackjackCardPickerProps {
   selected: BJCard | null;
   onSelect: (card: BJCard | null) => void;
   label?: string;
+  /** Accessible name for the card button. Defaults to the label plus the card shown. */
+  triggerLabel?: string;
 }
 
 const suitLabels: Record<BJSuit, string> = { clubs: "♣ Clubs", diamonds: "♦ Diamonds", hearts: "♥ Hearts", spades: "♠ Spades" };
 
-export function BlackjackCardPicker({ selected, onSelect, label }: BlackjackCardPickerProps) {
+export function BlackjackCardPicker({ selected, onSelect, label, triggerLabel }: BlackjackCardPickerProps) {
   const [open, setOpen] = useState(false);
   const [pickRank, setPickRank] = useState<BJRank | null>(selected?.rank ?? null);
   const [pickSuit, setPickSuit] = useState<BJSuit | null>(selected?.suit ?? null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    const root = rootRef.current;
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -32,6 +36,8 @@ export function BlackjackCardPicker({ selected, onSelect, label }: BlackjackCard
     return () => {
       document.body.style.overflow = original;
       window.removeEventListener("keydown", closeOnEscape);
+      // The card button is the first button in the root; the sheet renders after it.
+      root?.querySelector("button")?.focus();
     };
   }, [open]);
 
@@ -41,10 +47,14 @@ export function BlackjackCardPicker({ selected, onSelect, label }: BlackjackCard
     setOpen(true);
   };
 
+  const cardButtonLabel =
+    triggerLabel ??
+    (label ? (selected ? `${label}: ${selected.rank} of ${selected.suit}. Change card` : `${label}: choose a card`) : undefined);
+
   return (
-    <div>
+    <div ref={rootRef}>
       {label && <span className="mb-1.5 block text-[11px] text-zinc-500">{label}</span>}
-      <PlayingCard rank={selected?.rank} suit={selected?.suit} size="sm" onClick={openPicker} />
+      <PlayingCard rank={selected?.rank} suit={selected?.suit} size="sm" onClick={openPicker} ariaLabel={cardButtonLabel} />
       <AnimatePresence>
         {open && (
           <motion.div className="fixed inset-0 z-[80] flex items-end justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -56,11 +66,11 @@ export function BlackjackCardPicker({ selected, onSelect, label }: BlackjackCard
               </div>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Rank</p>
               <div className="grid grid-cols-7 gap-1.5">
-                {RANKS.map((rank) => <button key={rank} type="button" onClick={() => setPickRank(rank as BJRank)} className={cn("min-h-11 rounded-xl text-sm font-bold", pickRank === rank ? "border border-emerald-500/40 bg-emerald-500/18 text-emerald-300" : "bg-white/5 text-zinc-300")}>{rank}</button>)}
+                {RANKS.map((rank) => <button key={rank} type="button" aria-pressed={pickRank === rank} onClick={() => setPickRank(rank as BJRank)} className={cn("min-h-11 rounded-xl text-sm font-bold", pickRank === rank ? "border border-emerald-500/40 bg-emerald-500/18 text-emerald-300" : "bg-white/5 text-zinc-300")}>{rank}</button>)}
               </div>
               <p className="mb-2 mt-4 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Suit</p>
               <div className="grid grid-cols-2 gap-2">
-                {SUITS.map((suit) => <button key={suit} type="button" onClick={() => setPickSuit(suit as BJSuit)} className={cn("min-h-12 rounded-xl text-sm font-semibold", pickSuit === suit ? "border border-emerald-500/40 bg-emerald-500/18 text-emerald-300" : "bg-white/5 text-zinc-300", (suit === "hearts" || suit === "diamonds") && pickSuit !== suit && "text-red-400")}>{suitLabels[suit as BJSuit]}</button>)}
+                {SUITS.map((suit) => <button key={suit} type="button" aria-pressed={pickSuit === suit} onClick={() => setPickSuit(suit as BJSuit)} className={cn("min-h-12 rounded-xl text-sm font-semibold", pickSuit === suit ? "border border-emerald-500/40 bg-emerald-500/18 text-emerald-300" : "bg-white/5 text-zinc-300", (suit === "hearts" || suit === "diamonds") && pickSuit !== suit && "text-red-400")}>{suitLabels[suit as BJSuit]}</button>)}
               </div>
               {selected && <button type="button" onClick={() => { onSelect(null); setOpen(false); }} className="mt-4 min-h-11 w-full text-sm text-zinc-500">Clear card</button>}
               <button type="button" disabled={!pickRank || !pickSuit} onClick={() => { if (!pickRank || !pickSuit) return; onSelect({ rank: pickRank, suit: pickSuit }); setOpen(false); }} className="mt-2 min-h-12 w-full rounded-2xl bg-emerald-600 text-sm font-semibold text-white disabled:opacity-40">Use {pickRank && pickSuit ? `${pickRank} ${suitLabels[pickSuit].slice(0, 1)}` : "card"}</button>

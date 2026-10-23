@@ -6,13 +6,13 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PokerCardPicker } from "./PokerCardPicker";
 import { getUsedCards } from "@/lib/poker/pokerUtils";
+import { boardProgressHint } from "@/lib/poker/validation";
 import { cn } from "@/lib/utils";
 
 const STREETS: Street[] = ["preflop", "flop", "turn", "river"];
 
 export function StreetControls() {
   const street = usePokerStore((s) => s.street);
-  const setStreet = usePokerStore((s) => s.setStreet);
   const heroCards = usePokerStore((s) => s.heroCards);
   const communityCards = usePokerStore((s) => s.communityCards);
   const setHeroCard = usePokerStore((s) => s.setHeroCard);
@@ -24,34 +24,31 @@ export function StreetControls() {
   const setSmallBlindAmount = usePokerStore((s) => s.setSmallBlindAmount);
   const setBigBlindAmount = usePokerStore((s) => s.setBigBlindAmount);
 
-  const state = usePokerStore.getState();
-  const usedCards = getUsedCards({
-    ...state,
-    players: state.players,
-    heroId: state.heroId,
-    actions: state.actions,
-  });
+  const usedCards = getUsedCards(heroCards, communityCards);
 
   return (
     <GlassCard padding="sm">
       <SectionHeader title="Hand Setup" subtitle="Cards, street, and dollar stakes" />
 
-      <div className="flex gap-1 mb-4">
-        {STREETS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStreet(s)}
-            aria-pressed={street === s}
-            className={cn(
-              "min-h-11 flex-1 rounded-xl text-xs font-medium capitalize transition-colors",
-              street === s
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-white/5 text-zinc-500 hover:text-zinc-300"
-            )}
-          >
-            {s}
-          </button>
-        ))}
+      {/* The board cards set the street, so this only shows where the hand is. */}
+      <div className="mb-4">
+        <ol aria-label="Street" className="flex gap-1">
+          {STREETS.map((s) => (
+            <li
+              key={s}
+              aria-current={street === s ? "step" : undefined}
+              className={cn(
+                "flex h-8 flex-1 items-center justify-center rounded-lg text-xs font-medium capitalize",
+                street === s
+                  ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
+                  : "bg-white/3 text-zinc-600"
+              )}
+            >
+              {s}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-1.5 text-xs text-zinc-500">{boardProgressHint(communityCards)}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">

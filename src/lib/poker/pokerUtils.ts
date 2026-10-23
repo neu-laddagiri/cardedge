@@ -12,28 +12,32 @@ import {
   calculatePotOdds,
   recommendPokerAction,
 } from "./recommendations";
+import { analyzeBoard } from "./boardAnalysis";
 import { getCommunityCardArray } from "./monteCarlo";
-import { formatCurrency } from "../money";
+import { formatCurrency, roundMoney } from "../money";
 
 export function getPotOddsFormula(
   amountToCall: number,
   pot: number
 ): string {
   if (amountToCall <= 0) return "No call required";
-  const total = pot + amountToCall;
-  return `${formatCurrency(amountToCall)} / (${formatCurrency(pot)} + ${formatCurrency(amountToCall)}) = ${amountToCall}/${total}`;
+  // Sum in money terms so cents don't show floating-point noise (0.1 + 0.2).
+  const total = roundMoney(pot + amountToCall);
+  return `${formatCurrency(amountToCall)} / (${formatCurrency(pot)} + ${formatCurrency(amountToCall)}) = ${formatCurrency(amountToCall)}/${formatCurrency(total)}`;
 }
 
 export function formatStreet(street: Street): string {
   return street.charAt(0).toUpperCase() + street.slice(1);
 }
 
-export function getUsedCards(state: PokerGameState): Card[] {
-  const cards: Card[] = [];
-  if (state.heroCards[0]) cards.push(state.heroCards[0]);
-  if (state.heroCards[1]) cards.push(state.heroCards[1]);
-  cards.push(...getCommunityCardArray(state.communityCards));
-  return cards;
+export function getUsedCards(
+  heroCards: PokerGameState["heroCards"],
+  communityCards: PokerGameState["communityCards"]
+): Card[] {
+  return [
+    ...heroCards.filter((card): card is Card => card !== null),
+    ...getCommunityCardArray(communityCards),
+  ];
 }
 
 export function analyzeOpponentThreats(
@@ -41,12 +45,10 @@ export function analyzeOpponentThreats(
   players: Player[],
   heroId: string | null
 ): OpponentThreat[] {
-  const threats: OpponentThreat[] = [];
-  const board = communityCards;
-
-  if (board.length === 0) {
+  if (communityCards.length === 0) {
     return [
       {
+        id: "preflop",
         category: "Preflop ranges",
         likelihood: "medium",
         description:
@@ -55,25 +57,31 @@ export function analyzeOpponentThreats(
     ];
   }
 
-  const suits = board.map((c) => c.suit);
-  const suitCounts: Record<string, number> = {};
-  for (const s of suits) {
-    suitCounts[s] = (suitCounts[s] || 0) + 1;
-  }
-  const maxSuit = Math.max(...Object.values(suitCounts));
+  const board = analyzeBoard(communityCards);
+  const threats: OpponentThreat[] = [];
 
-  if (maxSuit >= 2) {
+  if (board.maxSuitCount >= 3) {
     threats.push({
+      id: "flush",
+      category: "Possible flush",
+      likelihood: "high",
+      description:
+        board.maxSuitCount >= 4
+          ? `${board.maxSuitCount} cards of one suit on board — anyone holding one more of that suit has a flush.`
+          : "Three cards of one suit on board — an opponent with two of that suit already has a flush.",
+    });
+  } else if (board.maxSuitCount === 2 && !board.isRiver) {
+    threats.push({
+      id: "flush-draw",
       category: "Possible flush draw",
-      likelihood: maxSuit >= 3 ? "high" : "medium",
-      description: `${maxSuit} cards of the same suit on board — flush draws are plausible.`,
+      likelihood: "medium",
+      description: "Two cards of one suit on board — opponents with two more of that suit are drawing to a flush.",
     });
   }
 
-  const ranks = board.map((c) => rankValue(c.rank)).sort((a, b) => a - b);
-  const hasPair = new Set(ranks).size < ranks.length;
-  if (hasPair) {
+  if (board.pairedRanks > 0) {
     threats.push({
+      id: "paired",
       category: "Set / two pair risk",
       likelihood: "high",
       description:
@@ -81,6 +89,7 @@ export function analyzeOpponentThreats(
     });
   } else {
     threats.push({
+      id: "top-pair",
       category: "Possible pair / top pair",
       likelihood: "medium",
       description:
@@ -88,24 +97,24 @@ export function analyzeOpponentThreats(
     });
   }
 
-  for (let i = 0; i < ranks.length - 2; i++) {
-    if (ranks[i + 2] - ranks[i] <= 4) {
-      threats.push({
-        category: "Possible straight draw",
-        likelihood: "medium",
-        description: "Connected cards suggest open-ended or gutshot straight draws.",
-      });
-      break;
-    }
+  // Three distinct ranks within five (aces count low too) allow straights.
+  if (board.straightDensity >= 3) {
+    threats.push({
+      id: "straight",
+      category: board.isRiver ? "Possible straight" : "Possible straight draw",
+      likelihood: board.straightDensity >= 4 ? "high" : "medium",
+      description: board.isRiver
+        ? "Connected cards on board — some two-card hands now make a straight."
+        : "Connected cards suggest open-ended or gutshot straight draws.",
+    });
   }
 
-  const highCard = Math.max(...ranks);
-  if (highCard >= 12) {
+  if (board.topRank <= 9) {
     threats.push({
+      id: "overpair",
       category: "Overpair risk",
       likelihood: "medium",
-      description:
-        "High board cards mean pocket pairs above the board are strong holdings.",
+      description: "Low board — any pocket pair of tens or better is an overpair.",
     });
   }
 
@@ -114,6 +123,7 @@ export function analyzeOpponentThreats(
     const styleNote = getStyleThreatNote(opp.style);
     if (styleNote) {
       threats.push({
+        id: `style-${opp.id}`,
         category: `${opp.name} (${opp.style})`,
         likelihood: "low",
         description: styleNote,
@@ -137,14 +147,6 @@ function getStyleThreatNote(style: OpponentStyle): string | null {
     default:
       return null;
   }
-}
-
-function rankValue(rank: Card["rank"]): number {
-  const map: Record<string, number> = {
-    "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-    T: 10, J: 11, Q: 12, K: 13, A: 14,
-  };
-  return map[rank] ?? 0;
 }
 
 export function buildRecommendation(

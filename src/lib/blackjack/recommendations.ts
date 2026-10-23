@@ -1,4 +1,5 @@
 import type {
+  BJCard,
   BlackjackDecisionInput,
   BlackjackMove,
   BlackjackRecommendation,
@@ -6,11 +7,13 @@ import type {
 import { getBasicStrategyDecision } from "./basicStrategy";
 import {
   cardToDisplay,
+  getBestTotal,
   getDisplayTotal,
   isBlackjack,
   isPair,
   isSoftHand,
 } from "./handValue";
+import { getChartDeckLabel } from "./strategyCharts";
 
 export function getBlackjackRecommendation(
   input: BlackjackDecisionInput
@@ -24,7 +27,8 @@ export function getBlackjackRecommendation(
     canSurrender: canSurrender && rules.surrenderAllowed,
     rules,
   });
-  const handType = isBlackjack(hand.cards)
+  // A split hand that makes 21 pays even money; only an unsplit ace-ten is a natural.
+  const handType = isBlackjack(hand.cards) && !hand.isSplit
     ? "blackjack"
     : isPair(hand.cards) && hand.cards.length === 2
       ? "pair"
@@ -34,9 +38,10 @@ export function getBlackjackRecommendation(
 
   const ruleNotes = [
     rules.dealerHitsSoft17 ? "H17 strategy matrix" : "S17 strategy matrix",
-    `${rules.numDecks}-deck strategy matrix`,
+    `${rules.numDecks}-deck shoe (Wizard of Odds ${getChartDeckLabel(rules.numDecks)} chart)`,
     rules.doubleAfterSplit ? "Double after split supported" : "No double after split",
     rules.surrenderAllowed ? "Late surrender matrix enabled" : "No surrender",
+    "Split aces receive one card each and can't be resplit",
     `Blackjack pays ${rules.blackjackPayout} (payout affects return, not the hit/stand matrix)`,
   ];
 
@@ -58,22 +63,22 @@ export function getBlackjackRecommendation(
 }
 
 function buildExplanation(
-  cards: import("./blackjackTypes").BJCard[],
+  cards: BJCard[],
   dealerRank: string,
   move: BlackjackMove,
   preferredMove: BlackjackMove | undefined,
   handType: BlackjackRecommendation["handType"]
 ): string {
-  const total = getDisplayTotal(cards);
+  const hand = `${isSoftHand(cards) ? "Soft" : "Hard"} ${getBestTotal(cards)}`;
   const unavailable = preferredMove
     ? ` ${preferredMove[0].toUpperCase()}${preferredMove.slice(1)} is preferred when allowed; ${move} is the correct fallback.`
     : "";
   if (handType === "blackjack") return "Natural blackjack — no further action is required.";
   if (move === "split") return `Split this pair against dealer ${dealerRank}; two independent hands have better expected value than playing the combined total.`;
-  if (move === "surrender") return `Late-surrender ${total} against dealer ${dealerRank}; giving up half the wager has better expected value than continuing under these rules.`;
-  if (move === "double") return `${handType === "soft" ? "Soft" : "Hard"} ${total} against dealer ${dealerRank} is a profitable double-down configuration.${unavailable}`;
-  if (move === "stand") return `${handType === "soft" ? "Soft" : "Hard"} ${total} should stand against dealer ${dealerRank}.${unavailable}`;
-  return `${handType === "soft" ? "Soft" : "Hard"} ${total} should hit against dealer ${dealerRank}.${unavailable}`;
+  if (move === "surrender") return `Late-surrender ${hand} against dealer ${dealerRank}; giving up half the wager has better expected value than continuing under these rules.`;
+  if (move === "double") return `${hand} against dealer ${dealerRank} is a profitable double-down configuration.${unavailable}`;
+  if (move === "stand") return `${hand} should stand against dealer ${dealerRank}.${unavailable}`;
+  return `${hand} should hit against dealer ${dealerRank}.${unavailable}`;
 }
 
 export function getMoveColor(move: BlackjackMove): string {

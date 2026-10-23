@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advancePokerStreet, applyPokerAction, normalizeSeatAssignments, postBlinds } from "./handState";
+import { advancePokerStreet, applyPokerAction, normalizeSeatAssignments, postBlinds, type PokerEngineState } from "./handState";
 import type { Player } from "./pokerTypes";
 
 function player(id: string, position: number): Player {
@@ -41,10 +41,38 @@ describe("poker hand state", () => {
       const checked = applyPokerAction(result.state, { id: "a3", playerId: "villain", type: "check" });
       expect(checked.ok).toBe(true);
       if (checked.ok) {
-        expect(checked.state.street).toBe("flop");
-        expect(checked.state.currentBet).toBe(0);
+        // The round is over, but the street only moves once the flop is on the board.
+        expect(checked.state.street).toBe("preflop");
+        expect(checked.state.actingPlayerId).toBeNull();
+        expect(applyPokerAction(checked.state, { id: "a4", playerId: "villain", type: "check" })).toEqual({
+          ok: false,
+          error: "Preflop betting is complete. Add the flop to continue.",
+        });
+        const flop = advancePokerStreet(checked.state, "flop");
+        expect(flop).toMatchObject({ street: "flop", currentBet: 0, actingPlayerId: "villain", handComplete: false });
       }
     }
+  });
+
+  it("keeps a folded-out hand over and ends an all-in hand on the river", () => {
+    const base: PokerEngineState = {
+      players: [player("hero", 0), player("villain", 1)],
+      heroId: "hero",
+      pot: 100,
+      currentBet: 0,
+      amountToCall: 0,
+      actingPlayerId: null,
+      actedPlayerIds: [],
+      handComplete: true,
+      street: "flop",
+      actions: [],
+    };
+    const foldedOut = { ...base, players: [base.players[0], { ...base.players[1], status: "folded" as const }] };
+    expect(advancePokerStreet(foldedOut, "turn")).toMatchObject({ handComplete: true, actingPlayerId: null });
+
+    const allIn = { ...base, players: base.players.map((current) => ({ ...current, stack: 0, status: "all-in" as const })) };
+    expect(advancePokerStreet(allIn, "turn")).toMatchObject({ handComplete: false, actingPlayerId: null });
+    expect(advancePokerStreet(allIn, "river")).toMatchObject({ handComplete: true });
   });
 
   it("handles bets, raises, folds, all-ins, and street resets", () => {
@@ -77,6 +105,36 @@ describe("poker hand state", () => {
     expect(advanced.players.every((current) => current.streetCommitment === 0)).toBe(true);
     const allIn = applyPokerAction(base, { id: "a4", playerId: "villain", type: "all-in" });
     expect(allIn.ok && allIn.state.players[1].status).toBe("all-in");
+  });
+
+  it("keeps money in whole cents so shoving the exact remaining stack is all-in", () => {
+    const base = {
+      players: [{ ...player("hero", 0), stack: 1 }, { ...player("villain", 1), stack: 5 }],
+      heroId: "hero",
+      pot: 0,
+      currentBet: 0,
+      amountToCall: 0,
+      actingPlayerId: "hero",
+      actedPlayerIds: [],
+      handComplete: false,
+      street: "flop" as const,
+      actions: [],
+    };
+    // In floating point 1 - 0.7 is 0.30000000000000004.
+    const bet = applyPokerAction(base, { id: "b1", playerId: "hero", type: "bet", amount: 0.7 });
+    if (!bet.ok) throw new Error(bet.error);
+    const call = applyPokerAction(bet.state, { id: "b2", playerId: "villain", type: "call" });
+    if (!call.ok) throw new Error(call.error);
+    expect(call.state.street).toBe("flop");
+    expect(call.state.players[0].stack).toBe(0.3);
+
+    const turn = advancePokerStreet(call.state, "turn");
+    const check = applyPokerAction(turn, { id: "b3", playerId: "villain", type: "check" });
+    if (!check.ok) throw new Error(check.error);
+    const shove = applyPokerAction(check.state, { id: "b4", playerId: "hero", type: "bet", amount: 0.3 });
+    if (!shove.ok) throw new Error(shove.error);
+    expect(shove.state.players[0]).toMatchObject({ stack: 0, status: "all-in" });
+    expect(shove.state.pot).toBe(1.7);
   });
 
   it("rejects missing, folded, and empty-stack actors", () => {

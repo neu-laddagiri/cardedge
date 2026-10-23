@@ -1,16 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { useBlackjackStore } from "@/store/blackjackStore";
+import { useId, useState } from "react";
+import { getHandPermissions, useBlackjackStore } from "@/store/blackjackStore";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { BlackjackCardPicker } from "./BlackjackCardPicker";
+import { RankKeypad } from "./RankKeypad";
 import { UserPlus, Trash2, Plus, Split } from "lucide-react";
-import type { BJCard } from "@/lib/blackjack/blackjackTypes";
+import type { BJCard, BJRank, BlackjackHand, HandStatus } from "@/lib/blackjack/blackjackTypes";
 import { InlineAlert } from "@/components/ui/InlineAlert";
-import { isPair } from "@/lib/blackjack/handValue";
+import { cardToDisplay, getDisplayTotal, isBust } from "@/lib/blackjack/handValue";
+import { autoSuitCard, collectTableCards, playerCardMove, rankName, type PlayerCardMove } from "@/lib/blackjack/quickEntry";
 import { BlackjackHandDisplay } from "./BlackjackHand";
+import { cn } from "@/lib/utils";
+
+const finishedLabels: Record<Exclude<HandStatus, "active">, string> = {
+  stood: "stood",
+  bust: "busted",
+  blackjack: "has blackjack",
+  surrendered: "surrendered",
+  doubled: "doubled",
+};
+
+function spokenCard(card: BJCard) {
+  return `${rankName(card.rank)} of ${card.suit}`;
+}
+
+function playerKeypadCaption(target: string, hand: BlackjackHand | undefined, doubleArmed: boolean) {
+  if (!hand) return "Select a hand to deal to";
+  if (hand.status !== "active") return `${target} ${finishedLabels[hand.status]}`;
+  const move = playerCardMove(hand, doubleArmed);
+  if (move === "double") return `Double ${target}: tap the card dealt`;
+  return move === "hit" ? `Hit ${target}` : `Deal to ${target}`;
+}
+
+function describePlayerCard(move: PlayerCardMove, card: BJCard, target: string, hand: BlackjackHand) {
+  const total = ` Total ${getDisplayTotal(hand.cards).replace("/", " or ")}.`;
+  const outcome = isBust(hand.cards) ? " Bust." : hand.status === "blackjack" ? " Blackjack." : "";
+  if (move === "double") return `${target} doubles with ${spokenCard(card)}.${total}${outcome}`;
+  if (move === "hit") return `${target} hits ${spokenCard(card)}.${total}${outcome}`;
+  return `Dealt ${spokenCard(card)} to ${target}.${total}${outcome}`;
+}
 
 export function BlackjackPlayerManager() {
   const players = useBlackjackStore((s) => s.players);
@@ -37,31 +68,60 @@ export function BlackjackPlayerManager() {
   const rules = useBlackjackStore((s) => s.rules);
   const lastError = useBlackjackStore((s) => s.lastError);
 
-  const [pendingCard, setPendingCard] = useState<BJCard | null>(null);
-
-  const handleAddCardToActive = () => {
-    if (!pendingCard || !activePlayerId || !activeHandId) return;
-    addCardToHand(activePlayerId, activeHandId, pendingCard);
-    setPendingCard(null);
-  };
-
-  const handleHit = () => {
-    if (!pendingCard || !activePlayerId || !activeHandId) return;
-    hitHand(activePlayerId, activeHandId, pendingCard);
-    setPendingCard(null);
-  };
+  // Double is armed for one snapshot of the hand: any change to that hand disarms it.
+  const [doubleFor, setDoubleFor] = useState<BlackjackHand | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const dealerCaptionId = useId();
+  const playerCaptionId = useId();
 
   const activePlayer = players.find((player) => player.id === activePlayerId);
   const activeHand = activePlayer?.hands.find((hand) => hand.id === activeHandId);
-  const handIsActive = activeHand?.status === "active";
-  const canSplit = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && isPair(activeHand.cards) && (activePlayer?.hands.length ?? 0) < 4);
-  const canDouble = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && (!activeHand.isSplit || rules.doubleAfterSplit));
-  const canSurrender = Boolean(activeHand && handIsActive && activeHand.cards.length === 2 && !activeHand.isSplit && rules.surrenderAllowed);
+  const { canHit: handIsActive, canStand, canSplit, canDouble, canSurrender } =
+    activePlayer && activeHand
+      ? getHandPermissions(activeHand, activePlayer, rules)
+      : { canHit: false, canStand: false, canSplit: false, canDouble: false, canSurrender: false };
+  const doubleArmed = canDouble && doubleFor === activeHand;
 
-  const handleDouble = () => {
-    if (!pendingCard || !activePlayerId || !activeHandId) return;
-    doubleHand(activePlayerId, activeHandId, pendingCard);
-    setPendingCard(null);
+  const playerName = activePlayer ? activePlayer.name.trim() || `Player ${players.indexOf(activePlayer) + 1}` : "";
+  const targetLabel =
+    activePlayer && activeHand && activePlayer.hands.length > 1
+      ? `${playerName}, hand ${activePlayer.hands.indexOf(activeHand) + 1}`
+      : playerName;
+  const playerCaption = playerKeypadCaption(targetLabel, activeHand, doubleArmed);
+
+  const tableCards = collectTableCards(players, dealerCards);
+  const rankAvailable = (rank: BJRank) => autoSuitCard(rank, tableCards, rules.numDecks) !== null;
+
+  const addDealer = (card: BJCard) => {
+    const isUpcard = dealerCards.length === 0;
+    addDealerCard(card);
+    if (!useBlackjackStore.getState().lastError) {
+      setAnnouncement(`Dealer ${isUpcard ? "upcard" : "card"}: ${spokenCard(card)}.`);
+    }
+  };
+
+  const dealDealerRank = (rank: BJRank) => {
+    const card = autoSuitCard(rank, tableCards, rules.numDecks);
+    if (card) addDealer(card);
+  };
+
+  const playCard = (card: BJCard) => {
+    if (!activePlayerId || !activeHandId || !activeHand || !handIsActive) return;
+    const move = playerCardMove(activeHand, doubleArmed);
+    if (move === "double") doubleHand(activePlayerId, activeHandId, card);
+    else if (move === "hit") hitHand(activePlayerId, activeHandId, card);
+    else addCardToHand(activePlayerId, activeHandId, card);
+    const next = useBlackjackStore.getState();
+    if (next.lastError) return;
+    const hand = next.players
+      .find((player) => player.id === activePlayerId)
+      ?.hands.find((candidate) => candidate.id === activeHandId);
+    if (hand) setAnnouncement(describePlayerCard(move, card, targetLabel, hand));
+  };
+
+  const dealPlayerRank = (rank: BJRank) => {
+    const card = autoSuitCard(rank, tableCards, rules.numDecks);
+    if (card) playCard(card);
   };
 
   const updateActiveBet = (amount: number) => {
@@ -74,8 +134,8 @@ export function BlackjackPlayerManager() {
     <div className="space-y-4">
       <InlineAlert message={lastError} />
       <GlassCard padding="sm">
-        <SectionHeader title="Dealer" subtitle="Add the visible upcard first" />
-        <div className="flex flex-wrap gap-2 mb-2">
+        <SectionHeader title="Dealer" subtitle="Tap the upcard first. Suits are filled in for you." />
+        <div className="flex flex-wrap gap-2 mb-3">
           {dealerCards.map((card, i) => (
             <div key={i} className="relative">
               <BlackjackCardPicker
@@ -90,16 +150,21 @@ export function BlackjackPlayerManager() {
           ))}
           <BlackjackCardPicker
             selected={null}
-            onSelect={(c) => c && addDealerCard(c)}
-            label="Add Card"
+            onSelect={(c) => c && addDealer(c)}
+            label="Exact card"
+            triggerLabel="Exact card for the dealer: choose rank and suit"
           />
         </div>
+        <p id={dealerCaptionId} className="mb-2 text-xs font-semibold text-zinc-300">
+          {dealerCards.length === 0 ? "Tap the dealer's upcard" : "Tap the dealer's next card"}
+        </p>
+        <RankKeypad labelledBy={dealerCaptionId} onRank={dealDealerRank} isRankAvailable={rankAvailable} />
       </GlassCard>
 
       <GlassCard padding="sm">
         <div className="flex items-center justify-between mb-4">
           <SectionHeader title="Your Hands" subtitle="Tap a hand to make it active" />
-          <Button size="sm" variant="secondary" onClick={addPlayer}>
+          <Button size="sm" variant="secondary" onClick={addPlayer} aria-label="Add player" title="Add player">
             <UserPlus className="h-3 w-3" />
           </Button>
         </div>
@@ -152,7 +217,7 @@ export function BlackjackPlayerManager() {
       </GlassCard>
 
       <GlassCard padding="sm">
-        <SectionHeader title="Next Move" subtitle="Choose a card only when the move needs one" />
+        <SectionHeader title="Next Move" subtitle="One tap deals a card to the active hand. Suits are filled in for you." />
         {activeHand && (
           <label className="mb-4 block text-xs text-zinc-500">
             Active bet ($)
@@ -170,19 +235,44 @@ export function BlackjackPlayerManager() {
             {activeHand.cards.length > 0 && <span className="mt-1 block text-[10px] text-zinc-600">Start a new hand to change the bet.</span>}
           </label>
         )}
-        <BlackjackCardPicker
-          selected={pendingCard}
-          onSelect={setPendingCard}
-          label="Selected Card"
+
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p id={playerCaptionId} className="text-sm font-semibold text-zinc-100">{playerCaption}</p>
+            <p className="mt-0.5 text-xs tabular-nums text-zinc-500">
+              {activeHand?.cards.length ? `${activeHand.cards.map(cardToDisplay).join(" ")} · ${getDisplayTotal(activeHand.cards)}` : "No cards yet"}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="gold"
+            aria-pressed={doubleArmed}
+            onClick={() => setDoubleFor(doubleArmed ? null : activeHand ?? null)}
+            disabled={!canDouble}
+            className={cn("shrink-0", doubleArmed && "bg-[#c9a84c] text-zinc-950 hover:bg-[#d7b75b]")}
+          >
+            Double
+          </Button>
+        </div>
+        <RankKeypad
+          labelledBy={playerCaptionId}
+          onRank={dealPlayerRank}
+          disabled={!handIsActive}
+          isRankAvailable={rankAvailable}
+          tone={doubleArmed ? "gold" : "emerald"}
         />
+        {handIsActive && (
+          <div className="mt-3">
+            <BlackjackCardPicker
+              selected={null}
+              onSelect={(card) => card && playCard(card)}
+              label="Exact card"
+              triggerLabel={`Exact card for ${targetLabel}: choose rank and suit`}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2 mt-4">
-          <Button size="sm" onClick={handleAddCardToActive} disabled={!pendingCard || !handIsActive}>
-            Add to Hand
-          </Button>
-          <Button size="sm" variant="secondary" onClick={handleHit} disabled={!pendingCard || !handIsActive}>
-            Hit
-          </Button>
           <Button
             size="sm"
             variant="secondary"
@@ -191,12 +281,9 @@ export function BlackjackPlayerManager() {
               activeHandId &&
               standHand(activePlayerId, activeHandId)
             }
-            disabled={!handIsActive}
+            disabled={!canStand}
           >
             Stand
-          </Button>
-          <Button size="sm" variant="gold" onClick={handleDouble} disabled={!pendingCard || !canDouble}>
-            Double
           </Button>
           {rules.surrenderAllowed && (
             <Button
@@ -213,6 +300,7 @@ export function BlackjackPlayerManager() {
             </Button>
           )}
         </div>
+        <p role="status" className="sr-only">{announcement}</p>
       </GlassCard>
     </div>
   );

@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { BlackjackSessionRecord } from "@/lib/blackjack/blackjackTypes";
 import type { GameSession } from "@/lib/bankroll";
+import {
+  loadSyncedIds,
+  mergeAtSignIn,
+  planPush,
+  rememberRecords,
+  saveSyncedIds,
+  type SyncedRecords,
+} from "@/lib/cloudSync";
 import type { PokerHandRecord } from "@/lib/poker/pokerTypes";
 import { useBlackjackStore } from "@/store/blackjackStore";
 import { usePokerStore } from "@/store/pokerStore";
@@ -28,12 +36,22 @@ interface SessionRow {
   updated_at: string;
 }
 
-function mergeById<T extends { id: string }>(remote: T[], local: T[]): T[] {
-  const merged = new Map(remote.map((item) => [item.id, item]));
-  local.forEach((item) => {
-    if (!merged.has(item.id)) merged.set(item.id, item);
-  });
-  return [...merged.values()];
+type QueryResult = { error: { message: string } | null };
+
+/** Supabase returns at most 1,000 rows per request by default. */
+const PAGE_SIZE = 1000;
+
+/** Reads every page, so an account with more rows than one request returns loads completely. */
+async function selectAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ data: T[]; error: null } | { data: null; error: { message: string } }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await page(from, from + PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return { data: rows, error: null };
+  }
 }
 
 function sessionFromRow(row: SessionRow): GameSession {
@@ -49,19 +67,27 @@ function sessionFromRow(row: SessionRow): GameSession {
   };
 }
 
+/** Keeps a bankroll edit that never reached the server instead of the older cloud copy. */
+function isNewerEdit(local: GameSession, remote: GameSession): boolean {
+  return Date.parse(local.updatedAt) > Date.parse(remote.updatedAt);
+}
+
 export function UserDataSync() {
   const { user, supabase } = useAuth();
+  // Token refreshes hand out a new user object; only a different account should reload.
+  const userId = user?.id ?? null;
   const pokerHands = usePokerStore((state) => state.savedHands);
   const blackjackSessions = useBlackjackStore((state) => state.savedSessions);
   const bankrollSessions = useBankrollStore((state) => state.sessions);
   const [readyUserId, setReadyUserId] = useState<string | null>(null);
-  const lastSnapshot = useRef("");
+  /** What this device knows is on the server; only these records may be deleted remotely. */
+  const synced = useRef<SyncedRecords | null>(null);
   const syncedUserId = useRef<string | null>(null);
   const initializingUserId = useRef<string | null>(null);
   const setSyncStatus = useSyncStatusStore((state) => state.setSyncStatus);
 
   useEffect(() => {
-    if (!user || !supabase) {
+    if (!userId || !supabase) {
       if (syncedUserId.current) {
         usePokerStore.getState().replaceSavedHands([]);
         useBlackjackStore.getState().replaceSavedSessions([]);
@@ -69,30 +95,40 @@ export function UserDataSync() {
       }
       syncedUserId.current = null;
       initializingUserId.current = null;
-      lastSnapshot.current = "";
+      synced.current = null;
       setSyncStatus("local");
       return;
     }
 
     let cancelled = false;
-    if (syncedUserId.current && syncedUserId.current !== user.id) {
+    if (syncedUserId.current && syncedUserId.current !== userId) {
       usePokerStore.getState().replaceSavedHands([]);
       useBlackjackStore.getState().replaceSavedSessions([]);
       useBankrollStore.getState().replaceSessions([]);
     }
-    syncedUserId.current = user.id;
-    initializingUserId.current = user.id;
+    syncedUserId.current = userId;
+    initializingUserId.current = userId;
+    synced.current = null;
     setSyncStatus("syncing");
 
     void Promise.all([
-      supabase
-        .from("training_records")
-        .select("id, record_type, payload, saved_at")
-        .order("saved_at", { ascending: false }),
-      supabase
-        .from("game_sessions")
-        .select("id, game_type, played_at, buy_in_cents, cash_out_cents, note, created_at, updated_at")
-        .order("played_at", { ascending: false }),
+      selectAll<TrainingRow>((from, to) =>
+        supabase
+          .from("training_records")
+          .select("id, record_type, payload, saved_at")
+          .order("saved_at", { ascending: false })
+          .order("record_type")
+          .order("id")
+          .range(from, to)
+      ),
+      selectAll<SessionRow>((from, to) =>
+        supabase
+          .from("game_sessions")
+          .select("id, game_type, played_at, buy_in_cents, cash_out_cents, note, created_at, updated_at")
+          .order("played_at", { ascending: false })
+          .order("id")
+          .range(from, to)
+      ),
     ]).then(([trainingResult, sessionsResult]) => {
       if (cancelled) return;
       if (trainingResult.error || sessionsResult.error) {
@@ -103,141 +139,146 @@ export function UserDataSync() {
         return;
       }
 
-      const rows = (trainingResult.data ?? []) as TrainingRow[];
-      const remotePoker = rows
+      const remotePoker = trainingResult.data
         .filter((row) => row.record_type === "poker_hand")
         .map((row) => row.payload as PokerHandRecord);
-      const remoteBlackjack = rows
+      const remoteBlackjack = trainingResult.data
         .filter((row) => row.record_type === "blackjack_session")
         .map((row) => row.payload as BlackjackSessionRecord);
-      const remoteSessions = ((sessionsResult.data ?? []) as SessionRow[]).map(sessionFromRow);
+      const remoteSessions = sessionsResult.data.map(sessionFromRow);
+      const syncedBefore = loadSyncedIds(userId);
 
-      const mergedPoker = mergeById(remotePoker, usePokerStore.getState().savedHands);
-      const mergedBlackjack = mergeById(
-        remoteBlackjack,
-        useBlackjackStore.getState().savedSessions
-      );
-      const mergedSessions = mergeById(remoteSessions, useBankrollStore.getState().sessions);
-
-      usePokerStore.getState().replaceSavedHands(mergedPoker);
-      useBlackjackStore.getState().replaceSavedSessions(mergedBlackjack);
-      useBankrollStore.getState().replaceSessions(mergedSessions);
-      lastSnapshot.current = "";
+      synced.current = {
+        poker: rememberRecords(remotePoker),
+        blackjack: rememberRecords(remoteBlackjack),
+        sessions: rememberRecords(remoteSessions),
+      };
+      saveSyncedIds(userId, synced.current);
       initializingUserId.current = null;
-      setReadyUserId(user.id);
+
+      usePokerStore.getState().replaceSavedHands(
+        mergeAtSignIn(remotePoker, usePokerStore.getState().savedHands, syncedBefore.poker)
+      );
+      useBlackjackStore.getState().replaceSavedSessions(
+        mergeAtSignIn(remoteBlackjack, useBlackjackStore.getState().savedSessions, syncedBefore.blackjack)
+      );
+      useBankrollStore.getState().replaceSessions(
+        mergeAtSignIn(remoteSessions, useBankrollStore.getState().sessions, syncedBefore.sessions, isNewerEdit)
+      );
+      setReadyUserId(userId);
       setSyncStatus("synced");
     });
 
     return () => {
       cancelled = true;
     };
-  }, [setSyncStatus, supabase, user]);
+  }, [setSyncStatus, supabase, userId]);
 
   useEffect(() => {
     if (
-      !user ||
+      !userId ||
       !supabase ||
-      readyUserId !== user.id ||
-      initializingUserId.current === user.id
+      readyUserId !== userId ||
+      initializingUserId.current === userId
     ) return;
-    const snapshot = JSON.stringify([pokerHands, blackjackSessions, bankrollSessions]);
-    if (snapshot === lastSnapshot.current) return;
 
     const timeout = window.setTimeout(() => {
-      setSyncStatus("syncing");
+      const known = synced.current;
+      if (!known) return;
+      const poker = planPush(known.poker, pokerHands);
+      const blackjack = planPush(known.blackjack, blackjackSessions);
+      const sessions = planPush(known.sessions, bankrollSessions);
+
+      // Each request, plus what this device may remember once the server has applied it.
+      const operations: { request: PromiseLike<QueryResult>; onSuccess: () => void }[] = [];
       const now = new Date().toISOString();
       const trainingRows = [
-        ...pokerHands.map((hand) => ({
+        ...poker.upserts.map((hand) => ({
           id: hand.id,
-          user_id: user.id,
+          user_id: userId,
           record_type: "poker_hand" as const,
           saved_at: new Date(hand.savedAt).toISOString(),
           payload: hand,
           updated_at: now,
         })),
-        ...blackjackSessions.map((session) => ({
+        ...blackjack.upserts.map((session) => ({
           id: session.id,
-          user_id: user.id,
+          user_id: userId,
           record_type: "blackjack_session" as const,
           saved_at: new Date(session.savedAt).toISOString(),
           payload: session,
           updated_at: now,
         })),
       ];
-      const gameRows = bankrollSessions.map((session) => ({
-        id: session.id,
-        user_id: user.id,
-        game_type: session.gameType,
-        played_at: session.playedAt,
-        buy_in_cents: session.buyInCents,
-        cash_out_cents: session.cashOutCents,
-        note: session.note,
-        created_at: session.createdAt,
-        updated_at: session.updatedAt,
-      }));
+      if (trainingRows.length) {
+        operations.push({
+          request: supabase.from("training_records").upsert(trainingRows, {
+            onConflict: "user_id,record_type,id",
+          }),
+          onSuccess: () => {
+            poker.upserts.forEach((hand) => known.poker.set(hand.id, JSON.stringify(hand)));
+            blackjack.upserts.forEach((session) => known.blackjack.set(session.id, JSON.stringify(session)));
+          },
+        });
+      }
+      if (sessions.upserts.length) {
+        operations.push({
+          request: supabase.from("game_sessions").upsert(
+            sessions.upserts.map((session) => ({
+              id: session.id,
+              user_id: userId,
+              game_type: session.gameType,
+              played_at: session.playedAt,
+              buy_in_cents: session.buyInCents,
+              cash_out_cents: session.cashOutCents,
+              note: session.note,
+              created_at: session.createdAt,
+              updated_at: session.updatedAt,
+            }))
+          ),
+          onSuccess: () => {
+            sessions.upserts.forEach((session) => known.sessions.set(session.id, JSON.stringify(session)));
+          },
+        });
+      }
+      if (poker.deletes.length) {
+        operations.push({
+          request: supabase
+            .from("training_records")
+            .delete()
+            .eq("record_type", "poker_hand")
+            .in("id", poker.deletes),
+          onSuccess: () => poker.deletes.forEach((id) => known.poker.delete(id)),
+        });
+      }
+      if (blackjack.deletes.length) {
+        operations.push({
+          request: supabase
+            .from("training_records")
+            .delete()
+            .eq("record_type", "blackjack_session")
+            .in("id", blackjack.deletes),
+          onSuccess: () => blackjack.deletes.forEach((id) => known.blackjack.delete(id)),
+        });
+      }
+      if (sessions.deletes.length) {
+        operations.push({
+          request: supabase.from("game_sessions").delete().in("id", sessions.deletes),
+          onSuccess: () => sessions.deletes.forEach((id) => known.sessions.delete(id)),
+        });
+      }
+      if (!operations.length) return;
 
-      void Promise.all([
-        trainingRows.length
-          ? supabase.from("training_records").upsert(trainingRows, {
-              onConflict: "user_id,record_type,id",
-            })
-          : Promise.resolve({ error: null }),
-        gameRows.length
-          ? supabase.from("game_sessions").upsert(gameRows)
-          : Promise.resolve({ error: null }),
-        supabase.from("training_records").select("id, record_type"),
-        supabase.from("game_sessions").select("id"),
-      ]).then(async ([trainingUpsert, gameUpsert, remoteTraining, remoteGames]) => {
-        const firstError = trainingUpsert.error ?? gameUpsert.error ?? remoteTraining.error ?? remoteGames.error;
-        if (firstError) {
-          setSyncStatus("error", firstError.message);
-          return;
-        }
-
-        const pokerIds = new Set(pokerHands.map((hand) => hand.id));
-        const blackjackIds = new Set(blackjackSessions.map((session) => session.id));
-        const missingPoker = (remoteTraining.data ?? [])
-          .filter((row) => row.record_type === "poker_hand" && !pokerIds.has(row.id))
-          .map((row) => row.id);
-        const missingBlackjack = (remoteTraining.data ?? [])
-          .filter((row) => row.record_type === "blackjack_session" && !blackjackIds.has(row.id))
-          .map((row) => row.id);
-        const localGameIds = new Set(bankrollSessions.map((session) => session.id));
-        const missingGames = (remoteGames.data ?? [])
-          .filter((row) => !localGameIds.has(row.id))
-          .map((row) => row.id);
-
-        const deletes = [];
-        if (missingPoker.length) {
-          deletes.push(
-            supabase
-              .from("training_records")
-              .delete()
-              .eq("record_type", "poker_hand")
-              .in("id", missingPoker)
-          );
-        }
-        if (missingBlackjack.length) {
-          deletes.push(
-            supabase
-              .from("training_records")
-              .delete()
-              .eq("record_type", "blackjack_session")
-              .in("id", missingBlackjack)
-          );
-        }
-        if (missingGames.length) {
-          deletes.push(supabase.from("game_sessions").delete().in("id", missingGames));
-        }
-        const deleteResults = await Promise.all(deletes);
-        const deleteError = deleteResults.find((result) => result.error)?.error;
-        if (deleteError) {
-          setSyncStatus("error", deleteError.message);
-          return;
-        }
-
-        lastSnapshot.current = snapshot;
-        setSyncStatus("synced");
+      setSyncStatus("syncing");
+      void Promise.all(operations.map((operation) => operation.request)).then((results) => {
+        results.forEach((result, index) => {
+          if (!result.error) operations[index].onSuccess();
+        });
+        saveSyncedIds(userId, known);
+        const failure = results.find((result) => result.error)?.error;
+        if (synced.current !== known) return; // signed out or switched accounts meanwhile
+        if (failure) setSyncStatus("error", failure.message);
+        else setSyncStatus("synced");
       });
     }, 700);
 
@@ -249,7 +290,7 @@ export function UserDataSync() {
     readyUserId,
     setSyncStatus,
     supabase,
-    user,
+    userId,
   ]);
 
   return null;

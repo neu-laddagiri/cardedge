@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { formatActionLabel } from "@/lib/poker/pokerUtils";
+import { bettingRoundComplete, streetCompleteMessage } from "@/lib/poker/handState";
 import { Undo2 } from "lucide-react";
 import { formatCurrency } from "@/lib/money";
 
@@ -22,6 +23,10 @@ export function PokerActionPanel() {
   const undoCount = usePokerStore((s) => s.undoStack.length);
   const actingPlayerId = usePokerStore((s) => s.actingPlayerId);
   const handComplete = usePokerStore((s) => s.handComplete);
+  const street = usePokerStore((s) => s.street);
+  const actedPlayerIds = usePokerStore((s) => s.actedPlayerIds);
+  // A finished round waits for the next board card before anyone can act.
+  const waitingForCards = !handComplete && bettingRoundComplete({ players, currentBet, actedPlayerIds });
 
   const [playerId, setPlayerId] = useState(players[0]?.id ?? "");
   const [actionType, setActionType] = useState<typeof ACTION_TYPES[number]>("call");
@@ -51,7 +56,9 @@ export function PokerActionPanel() {
       <p className="mb-3 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2 py-1.5 text-xs text-emerald-300">
         {handComplete
           ? "Hand complete"
-          : `To act: ${players.find((player) => player.id === actingPlayerId)?.name ?? "Select player"}`}
+          : waitingForCards
+            ? streetCompleteMessage(street)
+            : `To act: ${players.find((player) => player.id === actingPlayerId)?.name ?? "Select player"}`}
       </p>
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div>
@@ -104,7 +111,7 @@ export function PokerActionPanel() {
         </div>
       </div>
       <div className="flex gap-2 mb-4">
-        <Button size="sm" onClick={handleAdd} className="flex-1" disabled={handComplete}>
+        <Button size="sm" onClick={handleAdd} className="flex-1" disabled={handComplete || waitingForCards}>
           Add Action
         </Button>
         <Button size="sm" variant="ghost" onClick={clearActions}>

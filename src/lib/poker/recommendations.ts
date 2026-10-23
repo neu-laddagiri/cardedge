@@ -14,6 +14,16 @@ export function calculateEquityNeeded(amountToCall: number, pot: number): number
   return calculatePotOdds(amountToCall, pot);
 }
 
+/**
+ * Equity a hand needs before betting or raising for value: an even split of
+ * the pot plus a quarter of the rest. 62.5% heads-up, 50% three-way, 40%
+ * five-way — a fixed bar would ignore how many hands the pot is shared with.
+ */
+export function valueEquityThreshold(opponents: number): number {
+  const fairShare = 100 / (Math.max(1, opponents) + 1);
+  return fairShare + (100 - fairShare) * 0.25;
+}
+
 export function recommendPokerAction(
   equity: number,
   potOdds: number,
@@ -23,21 +33,26 @@ export function recommendPokerAction(
   const { amountToCall } = gameState;
   const lowerEquity = Math.max(0, equity - marginOfError);
   const upperEquity = Math.min(100, equity + marginOfError);
+  const opponents = gameState.players.filter(
+    (player) => player.id !== gameState.heroId && player.status !== "folded"
+  ).length;
+  const fairShare = 100 / (Math.max(1, opponents) + 1);
+  const valueThreshold = valueEquityThreshold(opponents);
 
   if (amountToCall === 0) {
-    if (equity >= 65) {
+    if (equity >= valueThreshold) {
       return {
         action: "bet",
-        explanation: `Estimated ${equity.toFixed(1)}% equity with no bet to call. A value bet is the estimated recommendation to build the pot.`,
+        explanation: `Estimated ${equity.toFixed(1)}% equity with no bet to call, well above a fair ${fairShare.toFixed(0)}% share of the pot. A value bet is the estimated recommendation to build the pot.`,
         potOdds: 0,
         equityNeeded: 0,
-        confidence: lowerEquity >= 60 ? "high" : "medium",
+        confidence: lowerEquity >= valueThreshold ? "high" : "medium",
       };
     }
-    if (equity >= 40) {
+    if (equity >= fairShare) {
       return {
         action: "check",
-        explanation: `Estimated ${equity.toFixed(1)}% equity. Checking is reasonable to control pot size and see more cards.`,
+        explanation: `Estimated ${equity.toFixed(1)}% equity is around a fair ${fairShare.toFixed(0)}% share of the pot. Checking is reasonable to control pot size and see more cards.`,
         potOdds: 0,
         equityNeeded: 0,
         confidence: "medium",
@@ -72,10 +87,10 @@ export function recommendPokerAction(
     };
   }
 
-  if (lowerEquity >= potOdds + 15) {
+  if (lowerEquity >= Math.max(potOdds + 15, valueThreshold)) {
     return {
       action: "raise",
-      explanation: `Estimated ${equity.toFixed(1)}% effective equity is comfortably above the ${potOdds.toFixed(1)}% break-even threshold. Raising for value is the training recommendation.`,
+      explanation: `Estimated ${equity.toFixed(1)}% effective equity is comfortably above the ${potOdds.toFixed(1)}% break-even threshold and a fair ${fairShare.toFixed(0)}% share of the pot. Raising for value is the training recommendation.`,
       potOdds,
       equityNeeded: potOdds,
       confidence: "high",

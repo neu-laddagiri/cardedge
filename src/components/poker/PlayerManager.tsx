@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePokerStore } from "@/store/pokerStore";
 import type { OpponentStyle, PlayerStatus } from "@/lib/poker/pokerTypes";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -35,10 +36,10 @@ export function PlayerManager() {
       <div className="flex items-center justify-between mb-4">
         <SectionHeader title="Players" subtitle="Manage seats & positions" />
         <div className="flex gap-1">
-          <Button size="sm" variant="secondary" onClick={rotateBlinds}>
+          <Button size="sm" variant="secondary" onClick={rotateBlinds} aria-label="Rotate blinds" title="Rotate blinds">
             <RotateCcw className="h-3 w-3" />
           </Button>
-          <Button size="sm" variant="secondary" onClick={addPlayer}>
+          <Button size="sm" variant="secondary" onClick={addPlayer} aria-label="Add player" title="Add player">
             <UserPlus className="h-3 w-3" />
           </Button>
         </div>
@@ -122,26 +123,16 @@ export function PlayerManager() {
                   <label htmlFor={`range-${player.id}`} className="text-[9px] text-zinc-600 uppercase">
                     Range %
                   </label>
-                  <input
+                  <RangeInput
                     id={`range-${player.id}`}
-                    type="number"
-                    min="5"
-                    max="100"
-                    value={player.rangeOverride ?? ""}
-                    placeholder="Auto"
-                    onChange={(event) =>
-                      setPlayerRange(
-                        player.id,
-                        event.target.value ? Number(event.target.value) : undefined
-                      )
-                    }
-                    className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs"
+                    value={player.rangeOverride}
+                    onCommit={(rangePercent) => setPlayerRange(player.id, rangePercent)}
                   />
                 </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <button
                 onClick={() => setHero(player.id)}
                 aria-pressed={player.isHero}
@@ -175,5 +166,47 @@ export function PlayerManager() {
         ))}
       </div>
     </GlassCard>
+  );
+}
+
+/**
+ * Edits as free text and applies on blur or Enter. Applying every keystroke clamped the "2" of
+ * "25" up to the 5% minimum and restarted the simulation for each digit.
+ */
+function RangeInput({
+  id,
+  value,
+  onCommit,
+}: {
+  id: string;
+  value: number | undefined;
+  onCommit: (rangePercent: number | undefined) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = () => {
+    if (draft === null) return;
+    const parsed = Number(draft);
+    onCommit(draft.trim() === "" || !Number.isFinite(parsed) ? undefined : parsed);
+    setDraft(null);
+  };
+
+  return (
+    <input
+      id={id}
+      type="number"
+      inputMode="numeric"
+      min="5"
+      max="100"
+      value={draft ?? value ?? ""}
+      placeholder="Auto"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") commit();
+        if (event.key === "Escape") setDraft(null);
+      }}
+      className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs"
+    />
   );
 }

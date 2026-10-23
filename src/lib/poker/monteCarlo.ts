@@ -1,7 +1,9 @@
+import { Hand } from "pokersolver";
+import { describeBoardTexture } from "./boardAnalysis";
 import { createDeck, removeKnownCards, shuffleDeck } from "./deck";
-import { compareHands, getBestFiveCardHand } from "./handEvaluator";
+import { cardToSolverString, getBestFiveCardHand } from "./handEvaluator";
 import { createSeededRandom } from "./random";
-import { estimateStartingHandStrength, handFitsRange } from "./ranges";
+import { estimateStartingHandStrength, rangeThreshold } from "./ranges";
 import type {
   Card,
   OpponentSimulationProfile,
@@ -38,11 +40,14 @@ export function runMonteCarloSimulation(
 
   const knownCards = [...heroCards, ...communityCards];
   const baseDeck = removeKnownCards(createDeck(), knownCards);
+  const cardsNeeded = 5 - communityCards.length;
 
-  if (baseDeck.length < opponents.length * 2 + (5 - communityCards.length)) {
+  if (baseDeck.length < opponents.length * 2 + cardsNeeded) {
     return null;
   }
 
+  const heroStrings = heroCards.map(cardToSolverString);
+  const knownBoard = communityCards.map(cardToSolverString);
   let wins = 0;
   let ties = 0;
   let losses = 0;
@@ -53,43 +58,31 @@ export function runMonteCarloSimulation(
     const opponentHands: Card[][] = [];
 
     for (const opponent of opponents) {
-      const [dealt, remaining] = dealRangeWeightedHand(
-        deck,
-        opponent.rangePercent,
-        rng
-      );
+      const [dealt, remaining] = dealRangeWeightedHand(deck, opponent.rangePercent, rng);
       opponentHands.push(dealt);
       deck = remaining;
     }
 
-    let board = [...communityCards];
-    const cardsNeeded = 5 - board.length;
-    if (cardsNeeded > 0) {
-      board = [...board, ...deck.slice(0, cardsNeeded)];
-    }
+    const board = cardsNeeded > 0
+      ? knownBoard.concat(deck.slice(0, cardsNeeded).map(cardToSolverString))
+      : knownBoard;
 
-    const heroSeven = [...heroCards, ...board].slice(0, 7);
-    let tiedOpponents = 0;
-    let heroLost = false;
+    // Solve every hand once and compare them together; tied winners split the pot.
+    const hero = Hand.solve(heroStrings.concat(board));
+    const hands = [
+      hero,
+      ...opponentHands.map((cards) => Hand.solve(cards.map(cardToSolverString).concat(board))),
+    ];
+    const winners = Hand.winners(hands);
 
-    for (const oppCards of opponentHands) {
-      const oppSeven = [...oppCards, ...board].slice(0, 7);
-      const result = compareHands(heroSeven, oppSeven);
-      if (result < 0) {
-        heroLost = true;
-        break;
-      }
-      if (result === 0) tiedOpponents++;
-    }
-
-    if (heroLost) {
+    if (!winners.includes(hero)) {
       losses++;
-    } else if (tiedOpponents > 0) {
-      ties++;
-      equityUnits += 1 / (tiedOpponents + 1);
-    } else {
+    } else if (winners.length === 1) {
       wins++;
       equityUnits += 1;
+    } else {
+      ties++;
+      equityUnits += 1 / winners.length;
     }
   }
 
@@ -109,105 +102,62 @@ export function runMonteCarloSimulation(
     marginOfError,
     simulations,
     bestHand,
-    boardTexture: analyzeBoardTexture(communityCards),
+    boardTexture: describeBoardTexture(communityCards),
     rangeSummary: opponents.map(
       (opponent) => `${opponent.name}: ${opponent.style} (~${opponent.rangePercent}% range)`
     ),
   };
 }
 
-function dealRangeWeightedHand(
+/**
+ * Deals one opponent two cards from an already-shuffled deck, uniformly at
+ * random among the starting hands inside their range. Exported for tests.
+ */
+export function dealRangeWeightedHand(
   deck: Card[],
   rangePercent: number,
   rng: () => number
 ): [Card[], Card[]] {
-  const shuffled = shuffleDeck(deck, rng);
-  if (rangePercent >= 100) return [shuffled.slice(0, 2), shuffled.slice(2)];
+  if (rangePercent >= 100) return [deck.slice(0, 2), deck.slice(2)];
 
-  // Try random candidates first. Falling back to the strongest available pair
-  // guarantees progress in short-deck edge cases without an unbounded loop.
-  for (let attempt = 0; attempt < 64; attempt++) {
+  const threshold = rangeThreshold(rangePercent);
+  const strength = (first: number, second: number) =>
+    estimateStartingHandStrength([deck[first], deck[second]]);
+
+  // Rejection sampling is uniform over in-range hands and fast for most ranges.
+  for (let attempt = 0; attempt < 256; attempt++) {
     const first = Math.floor(rng() * deck.length);
     let second = Math.floor(rng() * (deck.length - 1));
     if (second >= first) second++;
-    const hand: [Card, Card] = [deck[first], deck[second]];
-    if (handFitsRange(hand, rangePercent)) {
-      return [hand, deck.filter((_, index) => index !== first && index !== second)];
-    }
+    if (strength(first, second) >= threshold) return take(deck, first, second);
   }
 
+  // Very narrow ranges or heavy card removal: pick uniformly among every
+  // in-range hand that is still possible, or the strongest hand left if none are.
+  const candidates: [number, number][] = [];
   let best: [number, number] = [0, 1];
   let bestScore = -1;
   for (let first = 0; first < deck.length - 1; first++) {
     for (let second = first + 1; second < deck.length; second++) {
-      const hand: [Card, Card] = [deck[first], deck[second]];
-      const score = estimateStartingHandStrength(hand);
+      const score = strength(first, second);
+      if (score >= threshold) candidates.push([first, second]);
       if (score > bestScore) {
         best = [first, second];
         bestScore = score;
       }
     }
   }
+  const [first, second] = candidates.length
+    ? candidates[Math.floor(rng() * candidates.length)]
+    : best;
+  return take(deck, first, second);
+}
+
+function take(deck: Card[], first: number, second: number): [Card[], Card[]] {
   return [
-    [deck[best[0]], deck[best[1]]],
-    deck.filter((_, index) => index !== best[0] && index !== best[1]),
+    [deck[first], deck[second]],
+    deck.filter((_, index) => index !== first && index !== second),
   ];
-}
-
-function analyzeBoardTexture(board: Card[]): string[] {
-  if (board.length === 0) return ["Preflop — no board texture yet"];
-
-  const notes: string[] = [];
-  const suits = board.map((c) => c.suit);
-  const ranks = board.map((c) => rankToValue(c.rank));
-
-  const suitCounts: Record<string, number> = {};
-  for (const s of suits) {
-    suitCounts[s] = (suitCounts[s] || 0) + 1;
-  }
-  const maxSuit = Math.max(...Object.values(suitCounts));
-  if (maxSuit >= 3) notes.push("Flush draw possible on board");
-  if (maxSuit === 4) notes.push("Four to a flush — high flush threat");
-
-  const sorted = [...ranks].sort((a, b) => a - b);
-  const unique = [...new Set(sorted)];
-  if (unique.length < board.length) {
-    notes.push("Paired board — set/two-pair risk elevated");
-  }
-
-  const straightRanks = unique.includes(14) ? [1, ...unique] : unique;
-  for (let i = 0; i < straightRanks.length - 2; i++) {
-    if (straightRanks[i + 2] - straightRanks[i] <= 4) {
-      notes.push("Connected board — straight draws likely");
-      break;
-    }
-  }
-
-  const highCards = ranks.filter((r) => r >= 10).length;
-  if (highCards >= 2) notes.push("High-card board — overpair/top-pair spots common");
-
-  if (notes.length === 0) notes.push("Dry board — fewer obvious draws");
-
-  return notes;
-}
-
-function rankToValue(rank: Card["rank"]): number {
-  const map: Record<string, number> = {
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5,
-    "6": 6,
-    "7": 7,
-    "8": 8,
-    "9": 9,
-    T: 10,
-    J: 11,
-    Q: 12,
-    K: 13,
-    A: 14,
-  };
-  return map[rank] ?? 0;
 }
 
 export function countActiveOpponents(players: Player[], heroId: string): number {

@@ -28,11 +28,42 @@ function createDefaultPlayers(defaultBet = DEFAULT_BET): BlackjackPlayer[] {
   return [{ id: `bj${playerIdCounter++}`, name: "Player 1", hands: [createHand(defaultBet)] }];
 }
 
+function isSplitAce(hand: BlackjackHand): boolean {
+  return hand.isSplit && hand.cards[0]?.rank === "A";
+}
+
 function updateHandStatus(hand: BlackjackHand): BlackjackHand {
   if (["surrendered", "stood", "doubled"].includes(hand.status)) return hand;
   if (isBlackjack(hand.cards) && hand.cards.length === 2 && !hand.isSplit) return { ...hand, status: "blackjack" };
   if (isBust(hand.cards)) return { ...hand, status: "bust" };
+  // Split aces receive exactly one more card.
+  if (isSplitAce(hand) && hand.cards.length === 2) return { ...hand, status: "stood" };
   return { ...hand, status: "active" };
+}
+
+export interface HandPermissions {
+  canHit: boolean;
+  canStand: boolean;
+  canDouble: boolean;
+  canSplit: boolean;
+  canSurrender: boolean;
+}
+
+/** The moves the table rules allow for a hand right now; the UI and the advice both use this. */
+export function getHandPermissions(
+  hand: BlackjackHand,
+  player: BlackjackPlayer,
+  rules: BlackjackRules
+): HandPermissions {
+  const active = hand.status === "active";
+  const twoCards = hand.cards.length === 2;
+  return {
+    canHit: active,
+    canStand: active && hand.cards.length >= 2,
+    canDouble: active && twoCards && !isSplitAce(hand) && (!hand.isSplit || rules.doubleAfterSplit),
+    canSplit: active && twoCards && isPair(hand.cards) && !isSplitAce(hand) && player.hands.length < 4,
+    canSurrender: active && twoCards && !hand.isSplit && rules.surrenderAllowed,
+  };
 }
 
 interface BlackjackStore {
@@ -94,9 +125,7 @@ function computeRecommendation(state: BlackjackStore): BlackjackRecommendation |
   const dealerUpcard = state.dealerCards[0];
   const { player, hand } = activeHandDetails(state);
   if (!dealerUpcard || !player || !hand || hand.cards.length === 0 || hand.status !== "active") return null;
-  const canDouble = hand.cards.length === 2 && (!hand.isSplit || state.rules.doubleAfterSplit);
-  const canSplit = hand.cards.length === 2 && isPair(hand.cards) && player.hands.length < 4;
-  const canSurrender = hand.cards.length === 2 && !hand.isSplit && state.rules.surrenderAllowed;
+  const { canDouble, canSplit, canSurrender } = getHandPermissions(hand, player, state.rules);
   return getBlackjackRecommendation({ hand, dealerUpcard, rules: state.rules, canDouble, canSplit, canSurrender });
 }
 
@@ -216,6 +245,7 @@ export const useBlackjackStore = create<BlackjackStore>()(
         const hand = player?.hands.find((candidate) => candidate.id === handId);
         if (!player || !hand || hand.cards.length !== 2 || !isPair(hand.cards)) return { lastError: "Only a two-card pair can be split." };
         if (player.hands.length >= 4) return { lastError: "The four-hand split limit has been reached." };
+        if (!getHandPermissions(hand, player, state.rules).canSplit) return { lastError: "This hand can't be split again." };
         const record = decisionRecord(state, "split");
         const first: BlackjackHand = { ...hand, cards: [hand.cards[0]], status: "active", isSplit: true };
         const second: BlackjackHand = { id: `h${handIdCounter++}`, cards: [hand.cards[1]], status: "active", isSplit: true, bet: hand.bet };
@@ -232,6 +262,8 @@ export const useBlackjackStore = create<BlackjackStore>()(
         });
       }),
       addCardToHand: (playerId, handId, card) => set((state) => {
+        const target = state.players.find((player) => player.id === playerId)?.hands.find((hand) => hand.id === handId);
+        if (target && target.status !== "active") return { lastError: "This hand is finished. Select a hand that is still in play." };
         const error = validateAddedCard(state, card);
         if (error) return { lastError: error };
         const players = state.players.map((player) => player.id === playerId ? {
@@ -262,13 +294,19 @@ export const useBlackjackStore = create<BlackjackStore>()(
       },
       standHand: (playerId, handId) => {
         const state = get();
+        const player = state.players.find((candidate) => candidate.id === playerId);
+        const hand = player?.hands.find((candidate) => candidate.id === handId);
+        if (!player || !hand || !getHandPermissions(hand, player, state.rules).canStand) {
+          set({ lastError: "Standing needs a hand that is still in play with at least two cards." });
+          return;
+        }
         const record = decisionRecord(state, "stand");
         get().setHandStatus(playerId, handId, "stood");
         if (record) set((fresh) => ({ decisions: [record, ...fresh.decisions].slice(0, 250) }));
       },
       doubleHand: (playerId, handId, card) => set((state) => {
-        const { hand } = activeHandDetails(state);
-        if (!hand || hand.id !== handId || hand.cards.length !== 2 || (hand.isSplit && !state.rules.doubleAfterSplit)) {
+        const { player, hand } = activeHandDetails(state);
+        if (!player || !hand || hand.id !== handId || !getHandPermissions(hand, player, state.rules).canDouble) {
           return { lastError: "Doubling is unavailable for this hand under the selected rules." };
         }
         const error = validateAddedCard(state, card);
@@ -290,8 +328,8 @@ export const useBlackjackStore = create<BlackjackStore>()(
         });
       }),
       surrenderHand: (playerId, handId) => set((state) => {
-        const { hand } = activeHandDetails(state);
-        if (!state.rules.surrenderAllowed || !hand || hand.id !== handId || hand.cards.length !== 2 || hand.isSplit) {
+        const { player, hand } = activeHandDetails(state);
+        if (!player || !hand || hand.id !== handId || !getHandPermissions(hand, player, state.rules).canSurrender) {
           return { lastError: "Late surrender is unavailable for this hand." };
         }
         const record = decisionRecord(state, "surrender");

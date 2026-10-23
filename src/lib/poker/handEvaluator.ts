@@ -34,22 +34,6 @@ export function evaluateHand(cards: Card[]): {
   }
 }
 
-export function compareHands(
-  hand1Cards: Card[],
-  hand2Cards: Card[]
-): -1 | 0 | 1 {
-  try {
-    const h1 = Hand.solve(hand1Cards.map(cardToSolverString), "standard");
-    const h2 = Hand.solve(hand2Cards.map(cardToSolverString), "standard");
-    const winners = Hand.winners([h1, h2]);
-    if (winners.length === 2) return 0;
-    if (winners[0] === h1) return 1;
-    return -1;
-  } catch {
-    return 0;
-  }
-}
-
 export function getBestFiveCardHand(allCards: Card[]): string {
   if (allCards.length < 5) return "Incomplete hand";
   const result = evaluateHand(allCards);
