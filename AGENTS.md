@@ -88,4 +88,5 @@ Dollars are rounded to cents with `roundMoney` at every input and arithmetic bou
 - Card pickers are Framer Motion bottom sheets. In a hidden preview pane, animation frames pause, so the sheet never slides in and coordinate clicks hit its backdrop. Verify through element refs or DOM clicks there.
 - The app sends `X-Frame-Options: deny`, so it can't be loaded in an iframe, even same-origin.
 - `next` and `eslint-config-next` are pinned to the same exact version; bump them together and read the upgrade notes in `node_modules/next/dist/docs/`. `npm audit` still reports a dev-only `braces` chain inside `eslint-config-next` whose only "fix" is a downgrade.
+- The README's launch video is `public/brag.mp4`, a 720p web copy served at `/brag.mp4`, with `docs/brag-preview.gif` as its preview. Both come from a `/brag` run whose output (`brag-output/`, gitignored) stays local. The proxy matcher skips `.mp4` so range requests don't refresh the Supabase session.
 - Releases: add notes under `## Unreleased` in `CHANGELOG.md`; a release renames that to the version, bumps `package.json`, and lands as a "Release CardEdge x.y.z" PR.

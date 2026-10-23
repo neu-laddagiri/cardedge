@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a 20-second launch video to the README, served from the site at `/brag.mp4` (a 720p web copy) with a looping GIF preview, and tightened the README around it.
+- The proxy now skips `.mp4` requests, so video range requests don't refresh the session.
 - Added one-tap rank keypads (A, 2–10, J, Q, K) for the blackjack dealer and the active hand. The dealer upcard and two player cards now take three taps.
 - Suits are filled in automatically, rotating ♠♥♦♣ and skipping cards the configured shoe has used up. Ranks with no copies left are marked unavailable.
 - Replaced the Add to Hand, Hit, and Double buttons: a hand's first two cards are dealt, later cards are recorded as hits, and a Double toggle arms the next tap to double down when the table rules allow it.

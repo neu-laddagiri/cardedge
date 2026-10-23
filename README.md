@@ -1,56 +1,36 @@
 # CardEdge
 
-CardEdge is a mobile-first poker and blackjack decision trainer built with Next.js. It combines a validated dollar-stakes table engine, range-weighted poker equity simulations, rule-aware blackjack basic strategy, account-backed training history, and a dated profit/loss ledger.
+**Play the spot. Know the math.** CardEdge is a phone-first poker and blackjack trainer: enter the hand in a few taps and it tells you the move, with the numbers behind it. You get live Hold'em equity against modeled ranges next to the exact pot odds, chart-accurate blackjack strategy for your table's rules, and a to-the-cent results ledger.
+
+**[Try it live →](https://cardedge-five.vercel.app)** No account needed; everything works in guest mode.
+
+<p align="center">
+  <a href="https://cardedge-five.vercel.app/brag.mp4">
+    <img src="docs/brag-preview.gif" alt="CardEdge preview: &quot;Call or fold?&quot; on a heart draw, answered with Raise at 70.8% equity against 33.3% pot odds" width="640">
+  </a>
+  <br>
+  <a href="https://cardedge-five.vercel.app/brag.mp4"><b>▶ Watch the 20-second launch video</b></a>
+</p>
 
 > **Training use only:** CardEdge is not financial advice, a guaranteed winning system, or a tool for use during prohibited live or online play. Poker outputs are estimates based on the visible cards and modeled ranges. Casino rules and house procedures vary.
 
-## What works
+## Features
 
-### Texas Hold'em trainer
+### What's inside
 
-- Visual table for 2–10 players with heads-up and multiway blind positioning
-- Legal-action validation for check, call, bet, raise, fold, and all-in
-- Automatic stack, street commitment, current-bet, pot, and amount-to-call reconciliation
-- Action order, betting-round completion, streets set by the board cards, and one-action undo
-- Duplicate-card and street-layout validation
-- Cancellable Web Worker Monte Carlo simulations with Fast, Balanced, and Precise modes
-- Effective pot-share equity, split-pot accounting, 95% simulation interval, and pot odds
-- Style presets plus editable opponent range percentages, narrowed by recorded aggression
-- Cached identical simulations and debounced input updates
-- Dollar-denominated buy-ins, blinds, stacks, bets, calls, and pots with cent precision
-- Private hand history, notes, replay, decision-agreement statistics, and optional account sync
+- **Poker**: a visual table for 2–10 players. Enter your cards and the board and record the action, and CardEdge shows live equity, the pot odds and a fold, call or raise recommendation. Stacks, the pot and the amount to call update as you go. The street follows the board cards, and undo steps back one action.
+- **Blackjack**: one tap per card on rank keypads, with suits filled in from the shoe, then the move for your hand: hit, stand, double, split or surrender. It follows your table's deck count, H17/S17, double-after-split and surrender rules, with multiple players, up to four split hands and dollar bets.
+- **Results**: a dated session ledger for poker and blackjack with buy-in, cash-out and notes. Poker and blackjack each get a profit/loss total, plus one combined total.
+- **History and accounts**: saved hands and sessions with notes, replay and decision-agreement stats. Everything works as a guest, and an optional email account syncs it across devices.
 
-### Blackjack trainer
+### Under the hood
 
-- Hard, soft, pair, double, split, and late-surrender decisions
-- H17 and S17 strategy differences
-- One-, two-, four-, six-, and eight-deck configurations
-- Double-after-split and no-DAS matrices
-- Explicit preferred actions and legal fallbacks
-- Physical shoe validation based on the configured deck count
-- Multiple players and up to four split hands per player
-- Editable dollar bets for active hands
-- One-tap rank keypads for the dealer and the active hand, with automatic shoe-aware suits and a Double toggle
-- Private sessions, replay, actual-versus-recommended accuracy, and optional account sync
-- Clear disclosure that payout affects return rather than the hit/stand matrix
-
-### Results and accounts
-
-- Dated poker and blackjack session ledger with buy-in, cash-out, note, and exact net result
-- Separate poker and blackjack profit/loss totals plus a combined total
-- Mobile email/password accounts with secure recovery and cross-device sync
-- Guest mode that remains fully functional with local-only storage
-- Supabase row-level security so users can access only their own records
-
-### Product quality
-
-- Mobile-first bottom navigation, focused tool tabs, safe-area support, and card-picker sheets
-- One-handed 44px minimum controls and iOS-friendly 16px form inputs
-- Keyboard focus states, semantic controls, live validation alerts, and reduced-motion support
-- Route-level error recovery and accessible 404 page
-- Security response headers and Vercel Web Analytics
-- Deterministic unit tests with coverage gates
-- GitHub Actions verification for lint, type safety, tests, coverage, and production build
+- **Validated betting engine**: legal-action checks for check, call, bet, raise, fold and all-in, with action order and betting-round completion. Every amount is kept in whole cents.
+- **Range-weighted Monte Carlo**: simulations run in a cancellable Web Worker (Fast, Balanced or Precise). Opponent ranges are calibrated to the share of hands they name and narrowed by recorded aggression. Split pots count as shares, and the result comes with a 95% interval.
+- **Chart-accurate blackjack**: the Wizard of Odds basic-strategy charts for one, two and four to eight decks, H17/S17 and DAS/no-DAS, with every cell checked by tests. The shoe is validated card by card, and when the best move isn't allowed you get the legal fallback.
+- **Private by default**: guest data stays in the browser. Accounts use Supabase Auth and Postgres with row-level security, and each device tracks what it has synced, so one device never deletes another's records. Security response headers are on every page.
+- **Phone-first and accessible**: bottom navigation, focused tool tabs, 44 px touch targets and 16 px inputs. Keyboard focus states, live validation alerts, reduced-motion support and screen-reader names cover every control.
+- **Checked on every change**: deterministic Vitest suites with coverage gates. CI runs lint, types, tests and a production build.
 
 ## Tech stack
 
@@ -81,20 +61,13 @@ The app builds and runs in guest mode without external services. To enable accou
 3. Apply [`supabase/migrations/202607120001_cardedge_accounts.sql`](supabase/migrations/202607120001_cardedge_accounts.sql) in the Supabase SQL editor or CLI.
 4. Add the production and preview `/auth/callback` URLs to Supabase Auth redirect URLs.
 
-Run the complete release check:
-
 ```bash
-npm run check
-```
-
-Individual commands:
-
-```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run test:coverage
-npm run build
+npm run check           # Everything CI runs: lint, typecheck, tests with coverage, build
+npm run lint            # ESLint, zero warnings allowed
+npm run typecheck       # TypeScript
+npm test                # Vitest, single run
+npm run test:coverage   # Vitest with coverage gates
+npm run build           # Production build
 ```
 
 ## Calculation model
